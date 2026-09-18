@@ -79,10 +79,12 @@ namespace obd_car_dangerous
             Report(Loc.T("splash.scanning"), 0.22f);
             await Task.Run(link.RefreshEndpoints);
 
-            // The adapter that worked last time goes first.
+            // The adapter that worked last time goes first, then anything whose name says OBD -
+            // a BLE dongle is a much better guess than a random COM port.
             ObdEndpoint[] candidates = link.Found
                 .Where(e => e.Kind != EndpointKind.Demo)
                 .OrderByDescending(e => e.Address == AppState.Settings.LastAdapter)
+                .ThenByDescending(e => e.Kind == EndpointKind.Ble && BleObdTransport.LooksLikeAdapter(e.Name))
                 .ToArray();
             if (candidates.Length == 0)
             {
@@ -92,13 +94,6 @@ namespace obd_car_dangerous
 
             foreach (ObdEndpoint endpoint in candidates)
             {
-                // Wi-Fi is only worth a try when the user picked it before; probing it always
-                // costs four seconds on every start.
-                if (endpoint.Kind == EndpointKind.WiFi && AppState.Settings.LastAdapter != endpoint.Address)
-                {
-                    continue;
-                }
-
                 Report(Loc.T("splash.connecting.on", endpoint.Name), 0.4f);
 
                 if (await link.ConnectAsync(endpoint, progressReport, quickProbe: true))

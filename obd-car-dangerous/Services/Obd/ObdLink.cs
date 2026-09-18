@@ -4,18 +4,22 @@ namespace obd_car_dangerous.Services.Obd
 {
     internal enum EndpointKind
     {
+        /// <summary>USB cable or a Bluetooth Classic (SPP) pairing, both of which are COM ports.</summary>
         Serial,
-        WiFi,
+
+        /// <summary>Bluetooth Low Energy adapter, reached over GATT - no COM port involved.</summary>
+        Ble,
+
         Demo,
     }
 
-    /// <summary>Somewhere an adapter might be: a COM port, a Wi-Fi socket, or the built in demo feed.</summary>
+    /// <summary>Somewhere an adapter might be: a COM port, a BLE device, or the built in demo feed.</summary>
     internal sealed record ObdEndpoint(string Name, EndpointKind Kind, string Address, int Baud = 38400)
     {
         public string Transport => Kind switch
         {
-            EndpointKind.Serial => "Serial / Bluetooth",
-            EndpointKind.WiFi => "Wi-Fi",
+            EndpointKind.Serial => "USB / Bluetooth SPP",
+            EndpointKind.Ble => "Bluetooth LE",
             _ => "Demo",
         };
     }
@@ -90,8 +94,12 @@ namespace obd_car_dangerous.Services.Obd
 
         // ---- discovery -------------------------------------------------------
 
-        /// <summary>Everything worth offering the user: every COM port plus the usual Wi-Fi address.</summary>
-        public static List<ObdEndpoint> Discover()
+        /// <summary>
+        /// Adapters we can offer: every COM port (USB cable or Bluetooth SPP pairing) and, when
+        /// <paramref name="includeBluetooth"/> is set, the paired Bluetooth LE devices. Enumerating
+        /// BLE takes a moment, so the UI only asks for it off the UI thread.
+        /// </summary>
+        public static List<ObdEndpoint> Discover(bool includeBluetooth = true)
         {
             var found = new List<ObdEndpoint>();
 
@@ -100,9 +108,32 @@ namespace obd_car_dangerous.Services.Obd
                 found.Add(new ObdEndpoint(port, EndpointKind.Serial, port));
             }
 
-            found.Add(new ObdEndpoint("Wi-Fi ELM327", EndpointKind.WiFi, "192.168.0.10:35000"));
+            if (includeBluetooth)
+            {
+                List<(string Id, string Name)> paired = BleObdTransport.PairedDevices();
+
+                // Show likely adapters only; if nothing looks like one, show everything paired so
+                // an oddly named dongle can still be picked.
+                var likely = paired.Where(d => BleObdTransport.LooksLikeAdapter(d.Name)).ToList();
+                foreach ((string id, string name) in likely.Count > 0 ? likely : paired)
+                {
+                    found.Add(new ObdEndpoint(name, EndpointKind.Ble, id, 0));
+                }
+            }
+
             found.Add(new ObdEndpoint("Demo (simulated)", EndpointKind.Demo, "demo"));
             return found;
+        }
+
+        /// <summary>Advertisement scan, which also finds BLE adapters that are not paired yet.</summary>
+        public static async Task<List<ObdEndpoint>> ScanBluetoothAsync(TimeSpan duration)
+        {
+            List<(string Id, string Name)> seen = await BleObdTransport.ScanAsync(duration).ConfigureAwait(false);
+
+            return seen
+                .Where(d => BleObdTransport.LooksLikeAdapter(d.Name))
+                .Select(d => new ObdEndpoint(d.Name, EndpointKind.Ble, d.Id, 0))
+                .ToList();
         }
 
         // ---- connect / disconnect -------------------------------------------
@@ -247,16 +278,18 @@ namespace obd_car_dangerous.Services.Obd
         {
             TimeSpan handshake = quickProbe ? TimeSpan.FromMilliseconds(1200) : TimeSpan.FromSeconds(3);
 
-            if (endpoint.Kind == EndpointKind.WiFi)
+            if (endpoint.Kind == EndpointKind.Ble)
             {
-                string[] parts = endpoint.Address.Split(':');
-                string host = parts[0];
-                int port = parts.Length > 1 && int.TryParse(parts[1], out int parsed) ? parsed : 35000;
+                // BLE needs a longer handshake than a COM port: connecting, discovering services
+                // and subscribing all happen inside Initialize.
+                progress?.Report($"Connecting to {endpoint.Name} over Bluetooth LE");
+                var transport = new BleObdTransport(endpoint.Address, endpoint.Name,
+                    TimeSpan.FromSeconds(quickProbe ? 5 : 10));
+                var elm = new Elm327(transport);
 
-                progress?.Report($"Connecting to {host}:{port}");
-                var elm = new Elm327(new TcpObdTransport(host, port));
-                if (elm.Initialize(out string error, handshake))
+                if (elm.Initialize(out string error, TimeSpan.FromSeconds(quickProbe ? 4 : 6)))
                 {
+                    progress?.Report($"{endpoint.Name} ready (GATT {transport.Profile})");
                     return elm;
                 }
 

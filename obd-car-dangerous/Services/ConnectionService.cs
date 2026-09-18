@@ -24,7 +24,9 @@ namespace obd_car_dangerous.Services
 
         public ConnectionService()
         {
-            Found.AddRange(ObdLink.Discover());
+            // Serial ports only here: enumerating Bluetooth takes a moment and this runs on the
+            // UI thread during start up. The splash fills in the BLE devices straight after.
+            Found.AddRange(ObdLink.Discover(includeBluetooth: false));
             Current = DemoEndpoint;
 
             pump.Tick += (_, _) =>
@@ -157,7 +159,7 @@ namespace obd_car_dangerous.Services
             Changed?.Invoke(this, EventArgs.Empty);
         }
 
-        /// <summary>Re-reads the list of COM ports.</summary>
+        /// <summary>Re-reads the COM ports and the paired Bluetooth LE devices.</summary>
         public void RefreshEndpoints()
         {
             List<ObdEndpoint> discovered = ObdLink.Discover();
@@ -165,6 +167,10 @@ namespace obd_car_dangerous.Services
             Found.AddRange(discovered);
         }
 
+        /// <summary>
+        /// Refreshes the list and, for Bluetooth, listens for advertisements as well, so an adapter
+        /// that has never been paired still shows up.
+        /// </summary>
         public async void Scan()
         {
             if (Scanning)
@@ -175,10 +181,21 @@ namespace obd_car_dangerous.Services
             Scanning = true;
             Changed?.Invoke(this, EventArgs.Empty);
 
-            await Task.Run(RefreshEndpoints).ConfigureAwait(true);
+            try
+            {
+                await Task.Run(RefreshEndpoints).ConfigureAwait(true);
 
-            Scanning = false;
-            Changed?.Invoke(this, EventArgs.Empty);
+                List<ObdEndpoint> advertising = await ObdLink.ScanBluetoothAsync(TimeSpan.FromSeconds(5)).ConfigureAwait(true);
+                foreach (ObdEndpoint endpoint in advertising.Where(e => Found.All(f => f.Name != e.Name)))
+                {
+                    Found.Insert(Found.Count - 1, endpoint);
+                }
+            }
+            finally
+            {
+                Scanning = false;
+                Changed?.Invoke(this, EventArgs.Empty);
+            }
         }
 
         public void Dispose()

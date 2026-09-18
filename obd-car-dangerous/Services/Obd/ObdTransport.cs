@@ -1,10 +1,9 @@
 using System.IO.Ports;
-using System.Net.Sockets;
 using System.Text;
 
 namespace obd_car_dangerous.Services.Obd
 {
-    /// <summary>A byte pipe to an ELM327: Bluetooth/USB serial port or a Wi-Fi socket.</summary>
+    /// <summary>A byte pipe to an ELM327: a COM port, or a Bluetooth LE GATT link.</summary>
     internal interface IObdTransport : IDisposable
     {
         string Name { get; }
@@ -160,116 +159,5 @@ namespace obd_car_dangerous.Services.Obd
                 return int.TryParse(digits, out int value) ? value : 0;
             }
         }
-    }
-
-    /// <summary>ELM327 over Wi-Fi, which is a plain TCP socket (usually 192.168.0.10:35000).</summary>
-    internal sealed class TcpObdTransport : IObdTransport
-    {
-        private readonly string host;
-        private readonly int tcpPort;
-        private TcpClient? client;
-        private NetworkStream? stream;
-
-        public TcpObdTransport(string host, int port)
-        {
-            this.host = host;
-            tcpPort = port;
-        }
-
-        public string Name => $"{host}:{tcpPort}";
-
-        public bool IsOpen => client?.Connected == true;
-
-        public void Open()
-        {
-            client = new TcpClient();
-            if (!client.ConnectAsync(host, tcpPort).Wait(TimeSpan.FromSeconds(4)))
-            {
-                client.Dispose();
-                client = null;
-                throw new IOException($"No answer from {host}:{tcpPort}");
-            }
-
-            client.NoDelay = true;
-            stream = client.GetStream();
-            stream.ReadTimeout = 400;
-        }
-
-        public void Close()
-        {
-            stream?.Dispose();
-            client?.Close();
-            stream = null;
-            client = null;
-        }
-
-        public void Write(string text)
-        {
-            byte[] bytes = Encoding.ASCII.GetBytes(text);
-            stream?.Write(bytes, 0, bytes.Length);
-        }
-
-        public string ReadUntilPrompt(TimeSpan timeout)
-        {
-            if (stream is null)
-            {
-                return string.Empty;
-            }
-
-            var builder = new StringBuilder();
-            DateTime deadline = DateTime.UtcNow + timeout;
-            var buffer = new byte[256];
-
-            while (DateTime.UtcNow < deadline)
-            {
-                try
-                {
-                    int read = stream.Read(buffer, 0, buffer.Length);
-                    if (read <= 0)
-                    {
-                        continue;
-                    }
-
-                    string chunk = Encoding.ASCII.GetString(buffer, 0, read);
-                    int prompt = chunk.IndexOf('>');
-                    if (prompt >= 0)
-                    {
-                        builder.Append(chunk[..prompt]);
-                        return builder.ToString();
-                    }
-
-                    builder.Append(chunk);
-                }
-                catch (IOException)
-                {
-                    // Read timeout inside the socket; keep waiting for the caller's deadline.
-                }
-            }
-
-            return builder.ToString();
-        }
-
-        public void DiscardBuffers()
-        {
-            if (stream is null)
-            {
-                return;
-            }
-
-            var buffer = new byte[512];
-            try
-            {
-                while (client!.Available > 0)
-                {
-                    stream.Read(buffer, 0, buffer.Length);
-                }
-            }
-            catch (Exception)
-            {
-                // Nothing buffered, or the socket went away - both fine here.
-            }
-        }
-
-        public void Dispose() => Close();
     }
 }

@@ -167,13 +167,13 @@ namespace obd_car_dangerous.Services
             },
             ["conn.port"] = new[] { "Serial port", "シリアルポート", "串口" },
             ["conn.demo"] = new[] { "Use demo data", "デモデータを使う", "使用演示数据" },
-            ["conn.refresh"] = new[] { "Refresh ports", "ポートを再検索", "刷新端口" },
+            ["conn.refresh"] = new[] { "Scan for adapters", "アダプタを検索", "搜索适配器" },
             ["conn.vin"] = new[] { "VIN {0}", "VIN {0}", "VIN {0}" },
             ["conn.hint"] = new[]
             {
-                "Pair the ELM327 in Windows Bluetooth settings first; it then shows up as a COM port here.",
-                "先に Windows の Bluetooth 設定で ELM327 をペアリングすると、ここに COM ポートとして表示されます。",
-                "请先在 Windows 蓝牙设置中配对 ELM327，它会以 COM 端口形式显示在这里。",
+                "Bluetooth LE adapters are listed by name, USB and Bluetooth SPP ones as COM ports. Turn the ignition on, then tap one.",
+                "Bluetooth LE アダプタは名前で、USB や Bluetooth SPP のアダプタは COM ポートとして表示されます。イグニッションをオンにしてから選んでください。",
+                "蓝牙 LE 适配器按名称列出，USB 与蓝牙 SPP 适配器显示为 COM 端口。请先打开点火开关，再点击选择。",
             },
             ["common.good"] = new[] { "Good", "良好", "良好" },
             ["common.excellent"] = new[] { "Excellent", "優秀", "优秀" },

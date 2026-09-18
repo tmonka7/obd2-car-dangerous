@@ -16,22 +16,35 @@ skip ahead; the sequence carries on behind the shell.
 ## Connecting a real ELM327
 
 Tested against the protocol, not against every clone: the driver targets ELM327 v1.3-v2.x, which
-covers the common v1.5 Bluetooth and USB clones.
+covers the common v1.5 clones, over two transports.
 
-1. **Bluetooth**: pair the adapter in Windows Bluetooth settings first. Windows then exposes it as
-   an outgoing COM port, which is what this app looks for.
-2. **USB**: plug it in; it appears as a COM port directly.
-3. **Wi-Fi**: the app offers the usual `192.168.0.10:35000` endpoint under Settings > OBD2
-   Connection. Join the adapter's network first. It is only probed automatically once you have
-   connected to it manually at least once, because probing it costs several seconds per start.
+**Bluetooth LE (BLE 4.0 dongles)** - `Services/Obd/BleObdTransport.cs`. A BLE adapter never becomes
+a COM port; it exposes a GATT service with a write characteristic and a notify characteristic, so
+the app speaks GATT through WinRT. Paired devices are listed by name; "Scan for adapters" also
+listens for advertisements, which finds adapters that were never paired. Known GATT profiles:
+
+| Service | Write | Notify | Typical adapters |
+| --- | --- | --- | --- |
+| `FFF0` | `FFF2` | `FFF1` | Vgate iCar Pro BLE and most "ELM327 v1.5 BLE 4.0" clones |
+| `FFE0` | `FFE1` | `FFE1` | HM-10 style modules (one characteristic both ways) |
+| `18F0` | `2AF1` | `2AF0` | vLinker and several Chinese dongles |
+| Nordic UART | `...0002` | `...0003` | a few newer dongles |
+
+If yours uses none of these, the driver falls back to any vendor service that has a writable and a
+notifying characteristic, and reports which profile matched.
+
+**USB cable or Bluetooth Classic (SPP)** - `Services/Obd/ObdTransport.cs`. These do appear as COM
+ports (pair SPP adapters in Windows Bluetooth settings first). Baud probing tries 38400 and 115200
+during start up, the full list on a manual connect.
 
 Turn the ignition on (engine running or key in position II) before connecting - with the ignition
 off the adapter answers but the ECU does not.
 
-The link handles: ATZ/ATE0/ATL0/ATS0/ATH0/ATAT1/ATSP0 handshake, baud probing (38400 and 115200
-first, the rest on a manual connect), supported-PID discovery (0100/0120/0140), a polling rotation
-(fast values every cycle, temperatures every 20th), mode 03/07/0A fault codes, mode 04 clear, mode
-02 freeze frame and mode 09 VIN and calibration id.
+Wi-Fi/TCP adapters are not supported.
+
+The link handles: ATZ/ATE0/ATL0/ATS0/ATH0/ATAT1/ATSP0 handshake, supported-PID discovery
+(0100/0120/0140), a polling rotation (fast values every cycle, temperatures every 20th), mode
+03/07/0A fault codes, mode 04 clear, mode 02 freeze frame and mode 09 VIN and calibration id.
 
 **When no adapter answers the app starts in demo mode** with a simulated drive cycle, so the
 screens are still usable. Demo mode is labelled everywhere it matters - amber connection chip,
@@ -82,9 +95,9 @@ connected to a car.
 - `Ui/Draw.cs`, `Ui/Icons.cs`, `Ui/Charts.cs` - rounded cards, gauges, vector icons, line and bar charts.
 - `Ui/Sidebar.cs` - navigation rail; collapses to icons below 1180 px wide or via the hamburger.
 - `MainForm.cs` - shell, navigation stack, full screen handling, danger alerts, screen keep-alive.
-- `Services/Obd/` - the adapter driver: `ObdTransport` (serial and TCP pipes), `Elm327` (handshake,
-  commands, response parsing), `ObdPids` (PID table and formulas), `ObdLink` (worker thread, polling
-  rotation, request queue) and `ObdSelfTest`.
+- `Services/Obd/` - the adapter driver: `ObdTransport` (COM port pipe), `BleObdTransport`
+  (Bluetooth LE GATT pipe), `Elm327` (handshake, commands, response parsing), `ObdPids` (PID table
+  and formulas), `ObdLink` (worker thread, polling rotation, request queue) and `ObdSelfTest`.
 - `Services/` - `Telemetry` (live values from the link, or a simulated drive cycle, plus 10 minutes
   of history per PID), `DtcStore` (fault codes and the alarm log), `DtcCatalog` (the code
   dictionary), `ConnectionService` (live/demo state), `Loc` (translations), `AppSettings` (persisted
@@ -122,6 +135,14 @@ code is the number of failures:
 
 ```
 obd-car-dangerous.exe --selftest
+```
+
+List every adapter the app can see - COM ports, paired Bluetooth LE devices and a five second
+advertisement scan. Start here when an adapter does not show up; the report lands in
+`%TEMP%\obd-devices.txt`:
+
+```
+obd-car-dangerous.exe --devices
 ```
 
 ### Replacing the simulator entirely

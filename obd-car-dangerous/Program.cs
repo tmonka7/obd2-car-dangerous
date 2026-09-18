@@ -14,6 +14,30 @@ namespace obd_car_dangerous
             // see https://aka.ms/applicationconfiguration.
             ApplicationConfiguration.Initialize();
 
+            // Lists every adapter the app can see, including a Bluetooth LE advertisement scan.
+            if (args.Length > 0 && args[0] == "--devices")
+            {
+                string report = Path.Combine(Path.GetTempPath(), "obd-devices.txt");
+                using var writer = new StreamWriter(report);
+
+                writer.WriteLine("Serial ports and paired Bluetooth LE devices:");
+                foreach (Services.Obd.ObdEndpoint endpoint in Services.Obd.ObdLink.Discover())
+                {
+                    writer.WriteLine($"  {endpoint.Kind,-6} {endpoint.Name,-28} {endpoint.Address}");
+                }
+
+                writer.WriteLine();
+                writer.WriteLine("Bluetooth LE advertisements (5 s scan):");
+                foreach (Services.Obd.ObdEndpoint endpoint in
+                         Services.Obd.ObdLink.ScanBluetoothAsync(TimeSpan.FromSeconds(5)).GetAwaiter().GetResult())
+                {
+                    writer.WriteLine($"  {endpoint.Name,-28} {endpoint.Address}");
+                }
+
+                writer.Flush();
+                return;
+            }
+
             // Checks the ELM327 parsing against canned adapter answers; no hardware needed.
             if (args.Length > 0 && args[0] == "--selftest")
             {

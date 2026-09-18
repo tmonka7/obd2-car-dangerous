@@ -325,16 +325,23 @@ namespace obd_car_dangerous.Pages
 
                 string icon = endpoint.Kind switch
                 {
-                    EndpointKind.WiFi => "wifi",
+                    EndpointKind.Ble => "bluetooth",
                     EndpointKind.Demo => "chart",
-                    _ => "bluetooth",
+                    _ => "car",
                 };
                 Icons.Draw(g, icon, new RectangleF(row.X + 16, row.Y + 14, 30, 30),
                     activeNow ? Theme.Good : Theme.TextSoft, Theme.CardAlt);
 
                 Draw.TextIn(g, endpoint.Name, Draw.Font(21, FontStyle.Bold), Theme.Text,
                     new RectangleF(row.X + 58, row.Y, 240, row.Height), StringAlignment.Near, StringAlignment.Center, false);
-                Draw.TextIn(g, endpoint.Kind == EndpointKind.Demo ? Loc.T("state.demo.note") : endpoint.Address,
+                // A BLE device id is a long Windows path, so show what it is instead.
+                string endpointDetail = endpoint.Kind switch
+                {
+                    EndpointKind.Demo => Loc.T("state.demo.note"),
+                    EndpointKind.Ble => endpoint.Transport,
+                    _ => endpoint.Address,
+                };
+                Draw.TextIn(g, endpointDetail,
                     Draw.Font(17), Theme.TextSoft,
                     new RectangleF(row.X + 300, row.Y, row.Width - 460, row.Height), StringAlignment.Near, StringAlignment.Center, false);
                 Draw.TextIn(g, activeNow ? Loc.T("state.connected") : Loc.T("conn.tap"), Draw.Font(17, FontStyle.Bold),
