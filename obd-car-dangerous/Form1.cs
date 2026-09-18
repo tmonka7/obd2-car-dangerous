@@ -6,6 +6,7 @@ namespace obd_car_dangerous
     {
         private readonly System.Windows.Forms.Timer progressTimer;
         private float progress = 0.12f;
+        private string status = "Starting...";
 
         public Form1()
         {
@@ -14,15 +15,39 @@ namespace obd_car_dangerous
             progressTimer = new System.Windows.Forms.Timer { Interval = 40 };
             progressTimer.Tick += (_, _) =>
             {
-                progress += 0.006f;
-                if (progress > 1f)
+                progress += 0.014f;
+                status = progress switch
                 {
-                    progress = 0.12f;
+                    < 0.35f => "Starting...",
+                    < 0.6f => "Connecting to OBD2 adapter...",
+                    < 0.85f => "Reading ECU information...",
+                    _ => "Ready",
+                };
+
+                if (progress >= 1f)
+                {
+                    progressTimer.Stop();
+                    DialogResult = DialogResult.OK;
+                    Close();
+                    return;
                 }
 
                 Invalidate();
             };
             progressTimer.Start();
+        }
+
+        /// <summary>Any key or click skips the splash.</summary>
+        protected override void OnKeyDown(KeyEventArgs e)
+        {
+            base.OnKeyDown(e);
+            progress = 1f;
+        }
+
+        protected override void OnMouseDown(MouseEventArgs e)
+        {
+            base.OnMouseDown(e);
+            progress = 1f;
         }
 
         protected override void OnPaint(PaintEventArgs e)
@@ -165,7 +190,7 @@ namespace obd_car_dangerous
             FillRoundedRectangle(graphics, track, new Rectangle(370, 675, 540, 20), 10);
             FillRoundedRectangle(graphics, fill, new Rectangle(370, 675, Math.Max(20, (int)(540 * progress)), 20), 10);
             FillRoundedRectangle(graphics, track, new Rectangle(365, 708, 550, 72), 35);
-            DrawCenteredString(graphics, "Starting...", statusFont, Color.White, 720);
+            DrawCenteredString(graphics, status, statusFont, Color.White, 720);
         }
 
         private static void FillRoundedRectangle(Graphics graphics, Brush brush, Rectangle bounds, int radius)
