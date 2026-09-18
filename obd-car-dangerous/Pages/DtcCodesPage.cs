@@ -62,9 +62,9 @@ namespace obd_car_dangerous.Pages
                         Loc.T("dtc.clear.body"),
                         Loc.T("dtc.clear.ok"),
                         Theme.Critical,
-                        () =>
+                        async () =>
                         {
-                            int cleared = AppState.Dtc.ClearAll();
+                            int cleared = await AppState.Dtc.ClearAsync();
                             AppState.MarkScanned();
                             Shell.RefreshShell();
                             if (cleared > 0 && AppState.Settings.AlertSound)

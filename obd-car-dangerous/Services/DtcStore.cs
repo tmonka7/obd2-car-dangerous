@@ -90,6 +90,235 @@ namespace obd_car_dangerous.Services
             }
         }
 
+        /// <summary>True when the list came from a real ECU rather than the demo seed.</summary>
+        public bool FromVehicle { get; private set; }
+
+        /// <summary>
+        /// Drops the demo fault set as soon as a real car is attached, so no simulated code is
+        /// ever shown next to a live one.
+        /// </summary>
+        public void EnterLiveMode()
+        {
+            if (FromVehicle)
+            {
+                return;
+            }
+
+            codes.Clear();
+            alarms.Clear();
+            FromVehicle = true;
+            Changed?.Invoke(this, EventArgs.Empty);
+        }
+
+        /// <summary>Restores the demo fault set when the user switches back to simulated data.</summary>
+        public void EnterDemoMode()
+        {
+            if (!FromVehicle && codes.Count > 0)
+            {
+                return;
+            }
+
+            codes.Clear();
+            FromVehicle = false;
+            Seed();
+            Changed?.Invoke(this, EventArgs.Empty);
+        }
+
+        /// <summary>
+        /// Reads modes 03 (stored), 07 (pending) and 0A (permanent) from the ECU and replaces the
+        /// list. Does nothing in demo mode, where the seeded codes stay.
+        /// </summary>
+        public async Task RefreshFromVehicleAsync()
+        {
+            Obd.ObdLink link = AppState.Connection.Link;
+            if (!link.IsConnected)
+            {
+                return;
+            }
+
+            List<string> stored;
+            List<string> pending;
+            List<string> permanent;
+            Dictionary<string, string> freeze;
+
+            try
+            {
+                stored = await link.RequestAsync(elm => elm.ReadTroubleCodes("03")).ConfigureAwait(true);
+                pending = await link.RequestAsync(elm => elm.ReadTroubleCodes("07")).ConfigureAwait(true);
+                permanent = await link.RequestAsync(elm => elm.ReadTroubleCodes("0A")).ConfigureAwait(true);
+                freeze = stored.Count > 0
+                    ? await link.RequestAsync(ReadFreezeFrame).ConfigureAwait(true)
+                    : new Dictionary<string, string>();
+            }
+            catch (Exception ex)
+            {
+                Log("READ", $"Could not read fault codes: {ex.Message}", AlarmLevel.Warning);
+                return;
+            }
+
+            var previous = codes.Where(c => c.Status != DtcStatus.History).Select(c => c.Code).ToHashSet();
+
+            codes.Clear();
+            FromVehicle = true;
+
+            foreach (string code in stored)
+            {
+                codes.Add(Build(code, DtcStatus.Current, code == stored[0] ? freeze : new Dictionary<string, string>()));
+            }
+
+            foreach (string code in pending.Where(c => !stored.Contains(c)))
+            {
+                codes.Add(Build(code, DtcStatus.Pending, new Dictionary<string, string>()));
+            }
+
+            foreach (string code in permanent.Where(c => !stored.Contains(c) && !pending.Contains(c)))
+            {
+                codes.Add(Build(code, DtcStatus.History, new Dictionary<string, string>()));
+            }
+
+            foreach (DtcRecord record in codes.Where(c => c.Status != DtcStatus.History && !previous.Contains(c.Code)))
+            {
+                alarms.Insert(0, new AlarmEntry(record.DetectedAt, record.Code, record.Description, record.Level));
+            }
+
+            if (stored.Count == 0 && pending.Count == 0 && permanent.Count == 0)
+            {
+                Log("READ", "No fault codes stored in the ECU", AlarmLevel.Info);
+            }
+
+            Changed?.Invoke(this, EventArgs.Empty);
+
+            // A freshly read critical fault still deserves the danger screen.
+            DtcRecord? worst = codes.FirstOrDefault(c => c.Status == DtcStatus.Current && c.Severity == "High" && !previous.Contains(c.Code));
+            if (worst is not null)
+            {
+                DangerRaised?.Invoke(this, worst);
+            }
+        }
+
+        private static Dictionary<string, string> ReadFreezeFrame(Obd.Elm327 elm)
+        {
+            var frame = new Dictionary<string, string>();
+
+            foreach ((byte pid, string label, Func<byte[], string> format) in Obd.ObdPids.FreezeFrame)
+            {
+                byte[]? data = elm.ReadFreezeFrame(pid);
+                if (data is null || data.Length == 0)
+                {
+                    continue;
+                }
+
+                try
+                {
+                    frame[label] = format(data);
+                }
+                catch (Exception)
+                {
+                    // A short or malformed frame simply means that value is not stored.
+                }
+            }
+
+            return frame;
+        }
+
+        /// <summary>Builds a record for a code read from the car, described from the dictionary.</summary>
+        private static DtcRecord Build(string code, DtcStatus status, Dictionary<string, string> freeze) => new()
+        {
+            Code = code,
+            Description = DtcCatalog.Find(code)?.Description ?? "Manufacturer specific code",
+            Severity = SeverityOf(code),
+            Status = status,
+            System = SystemOf(code),
+            Effect = DtcCatalog.FamilyOf(code),
+            DetectedAt = DateTime.Now,
+            FreezeFrame = freeze,
+        };
+
+        /// <summary>
+        /// Severity is not part of OBD2, so it is derived from the code family: anything that can
+        /// damage the engine or disable a safety system counts as high.
+        /// </summary>
+        internal static string SeverityOf(string code)
+        {
+            if (code.Length < 3)
+            {
+                return "Medium";
+            }
+
+            string prefix = code[..3].ToUpperInvariant();
+
+            return code[0] switch
+            {
+                'U' => "High",
+                'C' => "High",
+                'B' => "Medium",
+                _ => prefix switch
+                {
+                    "P03" => "High",
+                    "P00" or "P01" or "P02" => "High",
+                    "P07" or "P08" => "High",
+                    "P04" or "P05" or "P06" or "P09" => "Medium",
+                    _ => "Medium",
+                },
+            };
+        }
+
+        internal static string SystemOf(string code)
+        {
+            if (code.Length < 3)
+            {
+                return "Engine";
+            }
+
+            return code[0] switch
+            {
+                'U' => "Network",
+                'C' => "ABS",
+                'B' => "Body",
+                _ => code[..3].ToUpperInvariant() switch
+                {
+                    "P04" => "Emission",
+                    "P07" or "P08" => "Transmission",
+                    _ => "Engine",
+                },
+            };
+        }
+
+        /// <summary>Clears codes: mode 04 on a real car, list shuffling in demo mode.</summary>
+        public async Task<int> ClearAsync()
+        {
+            Obd.ObdLink link = AppState.Connection.Link;
+            if (!link.IsConnected)
+            {
+                return ClearAll();
+            }
+
+            try
+            {
+                bool accepted = await link.RequestAsync(elm => elm.ClearTroubleCodes()).ConfigureAwait(true);
+                if (!accepted)
+                {
+                    Log("CLEAR", "ECU refused the clear request (mode 04)", AlarmLevel.Warning);
+                    return 0;
+                }
+            }
+            catch (Exception ex)
+            {
+                Log("CLEAR", $"Clear failed: {ex.Message}", AlarmLevel.Warning);
+                return 0;
+            }
+
+            int cleared = codes.Count(c => c.Status != DtcStatus.History);
+            foreach (DtcRecord code in codes.Where(c => c.Status != DtcStatus.History).ToList())
+            {
+                code.Status = DtcStatus.History;
+            }
+
+            Log("CLEAR", Loc.T("alarms.cleared", cleared), AlarmLevel.Info);
+            await RefreshFromVehicleAsync().ConfigureAwait(true);
+            return cleared;
+        }
+
         /// <summary>Clears current and pending codes; they stay readable under History.</summary>
         public int ClearAll()
         {
@@ -127,12 +356,20 @@ namespace obd_car_dangerous.Services
             Changed?.Invoke(this, EventArgs.Empty);
         }
 
-        /// <summary>Re-reads the ECU. In this build it restores the demo fault set.</summary>
-        public void Rescan()
+        /// <summary>Re-reads the ECU, or restores the demo fault set when no car is connected.</summary>
+        public async Task RescanAsync()
         {
+            if (AppState.Connection.Link.IsConnected)
+            {
+                await RefreshFromVehicleAsync().ConfigureAwait(true);
+                Log("SCAN", "Full system scan completed", AlarmLevel.Info);
+                return;
+            }
+
             codes.Clear();
+            FromVehicle = false;
             Seed();
-            Log("SCAN", "Full system scan completed", AlarmLevel.Info);
+            Log("SCAN", "Full system scan completed (demo data)", AlarmLevel.Info);
             Changed?.Invoke(this, EventArgs.Empty);
         }
 

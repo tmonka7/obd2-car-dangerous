@@ -110,8 +110,9 @@ namespace obd_car_dangerous.Ui
             var box = new RectangleF(compact ? 10 : 14, H - 118, W - (compact ? 20 : 28), 96);
             Draw.FillRounded(g, Draw.Alpha(Color.White, 22), box, 14f);
 
+            bool live = AppState.Connection.IsLive;
             bool online = AppState.Connection.IsConnected;
-            Color dot = online ? Theme.Good : Theme.Warn;
+            Color dot = live ? Theme.Good : online ? Theme.Warn : Theme.Critical;
             g.FillEllipse(new SolidBrush(dot), box.X + (compact ? box.Width / 2f - 7 : 18), box.Y + 20, 14, 14);
 
             if (compact)

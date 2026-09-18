@@ -114,6 +114,33 @@ namespace obd_car_dangerous.Services
             ["splash.connecting"] = new[] { "Connecting to OBD2 adapter...", "OBD2 アダプタに接続中...", "正在连接 OBD2 诊断器..." },
             ["splash.reading"] = new[] { "Reading ECU information...", "ECU 情報を読み取り中...", "正在读取 ECU 信息..." },
             ["splash.ready"] = new[] { "Ready", "準備完了", "准备就绪" },
+            ["splash.scanning"] = new[]
+            {
+                "Looking for an OBD2 adapter...",
+                "OBD2 アダプタを探しています...",
+                "正在查找 OBD2 诊断器...",
+            },
+            ["splash.connecting.on"] = new[]
+            {
+                "Connecting on {0}...",
+                "{0} で接続中...",
+                "正在通过 {0} 连接...",
+            },
+            ["splash.protocol"] = new[] { "Protocol {0}", "プロトコル {0}", "协议 {0}" },
+            ["splash.connected"] = new[] { "{0} · {1}", "{0} · {1}", "{0} · {1}" },
+            ["splash.novin"] = new[] { "VIN not reported", "VIN なし", "未报告 VIN" },
+            ["splash.noadapter"] = new[]
+            {
+                "No adapter found - starting in demo mode",
+                "アダプタ未検出 - デモモードで起動",
+                "未找到诊断器 - 以演示模式启动",
+            },
+            ["splash.demo"] = new[]
+            {
+                "Auto connect is off - starting in demo mode",
+                "自動接続がオフ - デモモードで起動",
+                "自动连接已关 - 以演示模式启动",
+            },
 
             // Navigation
             ["nav.menu"] = new[] { "MENU", "メニュー", "菜单" },
@@ -131,6 +158,23 @@ namespace obd_car_dangerous.Services
             ["state.connected"] = new[] { "Connected", "接続済み", "已连接" },
             ["state.connecting"] = new[] { "Connecting", "接続中", "连接中" },
             ["state.disconnected"] = new[] { "Disconnected", "未接続", "未连接" },
+            ["state.demo"] = new[] { "Demo mode", "デモモード", "演示模式" },
+            ["state.demo.note"] = new[]
+            {
+                "Simulated data - no vehicle connected",
+                "シミュレーションデータ - 車両未接続",
+                "模拟数据 - 未连接车辆",
+            },
+            ["conn.port"] = new[] { "Serial port", "シリアルポート", "串口" },
+            ["conn.demo"] = new[] { "Use demo data", "デモデータを使う", "使用演示数据" },
+            ["conn.refresh"] = new[] { "Refresh ports", "ポートを再検索", "刷新端口" },
+            ["conn.vin"] = new[] { "VIN {0}", "VIN {0}", "VIN {0}" },
+            ["conn.hint"] = new[]
+            {
+                "Pair the ELM327 in Windows Bluetooth settings first; it then shows up as a COM port here.",
+                "先に Windows の Bluetooth 設定で ELM327 をペアリングすると、ここに COM ポートとして表示されます。",
+                "请先在 Windows 蓝牙设置中配对 ELM327，它会以 COM 端口形式显示在这里。",
+            },
             ["common.good"] = new[] { "Good", "良好", "良好" },
             ["common.excellent"] = new[] { "Excellent", "優秀", "优秀" },
             ["common.fair"] = new[] { "Fair", "普通", "一般" },
@@ -311,6 +355,12 @@ namespace obd_car_dangerous.Services
                 "代码将转入历史。若故障仍存在，ECU 会在下次行驶循环中再次记录。",
             },
             ["detail.clear.ok"] = new[] { "Clear code", "消去する", "清除" },
+            ["detail.clear.body.live"] = new[]
+            {
+                "OBD2 has no command for a single code: mode 04 clears every stored code and resets the readiness monitors. Codes return if the fault is still present.",
+                "OBD2 には個別のコードを消去する命令がなく、モード 04 は全コードとレディネスモニタをリセットします。故障が残っていれば再発生します。",
+                "OBD2 没有单独清除某一代码的命令：模式 04 会清除全部故障码并重置就绪监测。若故障仍在，代码会再次出现。",
+            },
 
             // Danger overlay
             ["danger.title"] = new[] { "Danger Alert!", "危険警告！", "危险警报！" },

@@ -13,7 +13,7 @@ namespace obd_car_dangerous.Pages
 
         public DiagnosticsPage()
         {
-            scanTimer.Tick += (_, _) =>
+            scanTimer.Tick += async (_, _) =>
             {
                 scanProgress += 0.018f;
                 scanSystem = Math.Min(AppState.Systems.Count - 1, (int)(scanProgress * AppState.Systems.Count));
@@ -21,7 +21,7 @@ namespace obd_car_dangerous.Pages
                 {
                     scanTimer.Stop();
                     scanProgress = -1f;
-                    AppState.Dtc.Rescan();
+                    await AppState.Dtc.RescanAsync();
                     AppState.MarkScanned();
                     Shell.RefreshShell();
                     if (AppState.Settings.AlertSound)

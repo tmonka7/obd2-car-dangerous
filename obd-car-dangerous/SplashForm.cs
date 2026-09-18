@@ -1,34 +1,47 @@
 using System.Drawing.Drawing2D;
+using obd_car_dangerous.Services;
+using obd_car_dangerous.Services.Obd;
 
 namespace obd_car_dangerous
 {
-    public partial class Form1 : Form
+    /// <summary>
+    /// Startup screen. It is not a timed animation: it runs the real start sequence - look for
+    /// adapters, open the ELM327, detect the protocol, read the VIN and the stored fault codes -
+    /// and reports each step. If no adapter answers it falls back to the simulated feed.
+    /// </summary>
+    internal sealed class SplashForm : Form
     {
-        private readonly System.Windows.Forms.Timer progressTimer;
-        private float progress = 0.12f;
+        private readonly System.Windows.Forms.Timer animation = new() { Interval = 40 };
+
+        private float progress;
+        private float target = 0.08f;
         private float blink;
         private string status = "Starting...";
+        private bool finished;
 
-        public Form1()
+        public SplashForm()
         {
-            InitializeComponent();
+            AutoScaleMode = AutoScaleMode.Font;
+            BackColor = Color.FromArgb(135, 204, 247);
+            ClientSize = new Size(1280, 800);
+            FormBorderStyle = FormBorderStyle.None;
+            KeyPreview = true;
+            MaximizeBox = false;
+            MinimizeBox = false;
+            StartPosition = FormStartPosition.CenterScreen;
+            Text = "OBD2 Car Dangerous System";
+            WindowState = FormWindowState.Maximized;
+            DoubleBuffered = true;
+            SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.UserPaint, true);
 
-            progressTimer = new System.Windows.Forms.Timer { Interval = 40 };
-            progressTimer.Tick += (_, _) =>
+            animation.Tick += (_, _) =>
             {
-                progress += 0.014f;
                 blink += 0.17f;
-                status = progress switch
-                {
-                    < 0.35f => Services.Loc.T("splash.starting"),
-                    < 0.6f => Services.Loc.T("splash.connecting"),
-                    < 0.85f => Services.Loc.T("splash.reading"),
-                    _ => Services.Loc.T("splash.ready"),
-                };
+                progress += (target - progress) * 0.12f;
 
-                if (progress >= 1f)
+                if (finished && progress > 0.985f)
                 {
-                    progressTimer.Stop();
+                    animation.Stop();
                     DialogResult = DialogResult.OK;
                     Close();
                     return;
@@ -36,37 +49,133 @@ namespace obd_car_dangerous
 
                 Invalidate();
             };
-            progressTimer.Start();
+
+            Shown += async (_, _) =>
+            {
+                animation.Start();
+                await StartupAsync();
+            };
+        }
+
+        /// <summary>Endpoint the start sequence connected to, or null when it fell back to demo.</summary>
+        public ObdEndpoint? Connected { get; private set; }
+
+        // ---- real start sequence ---------------------------------------------
+
+        private async Task StartupAsync()
+        {
+            ConnectionService link = AppState.Connection;
+            var progressReport = new Progress<string>(text => Report(text, Math.Min(0.9f, target + 0.04f)));
+
+            Report(Loc.T("splash.starting"), 0.12f);
+            await Task.Delay(250);
+
+            if (!AppState.Settings.AutoConnect)
+            {
+                Finish(Loc.T("splash.demo"), demo: true);
+                return;
+            }
+
+            Report(Loc.T("splash.scanning"), 0.22f);
+            await Task.Run(link.RefreshEndpoints);
+
+            // The adapter that worked last time goes first.
+            ObdEndpoint[] candidates = link.Found
+                .Where(e => e.Kind != EndpointKind.Demo)
+                .OrderByDescending(e => e.Address == AppState.Settings.LastAdapter)
+                .ToArray();
+            if (candidates.Length == 0)
+            {
+                Finish(Loc.T("splash.noadapter"), demo: true);
+                return;
+            }
+
+            foreach (ObdEndpoint endpoint in candidates)
+            {
+                // Wi-Fi is only worth a try when the user picked it before; probing it always
+                // costs four seconds on every start.
+                if (endpoint.Kind == EndpointKind.WiFi && AppState.Settings.LastAdapter != endpoint.Address)
+                {
+                    continue;
+                }
+
+                Report(Loc.T("splash.connecting.on", endpoint.Name), 0.4f);
+
+                if (await link.ConnectAsync(endpoint, progressReport, quickProbe: true))
+                {
+                    Connected = link.Current;
+                    AppState.Settings.Update(s => s.LastAdapter = link.Current.Address);
+
+                    Report(Loc.T("splash.protocol", link.Link.Protocol), 0.8f);
+                    await Task.Delay(200);
+
+                    string vehicle = link.Link.Vin is { Length: > 0 } vin ? vin : Loc.T("splash.novin");
+                    Finish(Loc.T("splash.connected", link.Link.Firmware, vehicle), demo: false);
+                    return;
+                }
+            }
+
+            Finish(Loc.T("splash.noadapter"), demo: true);
+        }
+
+        private void Report(string text, float targetProgress)
+        {
+            status = text;
+            target = Math.Max(target, targetProgress);
+            Invalidate();
+        }
+
+        private void Finish(string text, bool demo)
+        {
+            if (demo)
+            {
+                AppState.Connection.EnterDemo();
+            }
+
+            status = text;
+            target = 1f;
+            finished = true;
+            Invalidate();
         }
 
         /// <summary>Freezes the splash at a given progress and blink phase, used by the offscreen renderer.</summary>
         internal void PreviewFrame(float progressValue, float blinkPhase)
         {
-            progressTimer.Stop();
+            animation.Stop();
             progress = progressValue;
+            target = progressValue;
             blink = blinkPhase;
-            status = Services.Loc.T("splash.connecting");
+            status = Loc.T("splash.connecting");
             Invalidate();
         }
 
-        /// <summary>Any key or click skips the splash.</summary>
+        /// <summary>Any key or click hides the splash; the start sequence carries on behind it.</summary>
         protected override void OnKeyDown(KeyEventArgs e)
         {
             base.OnKeyDown(e);
-            progress = 1f;
+            Skip();
         }
 
         protected override void OnMouseDown(MouseEventArgs e)
         {
             base.OnMouseDown(e);
-            progress = 1f;
+            Skip();
         }
+
+        private void Skip()
+        {
+            animation.Stop();
+            DialogResult = DialogResult.OK;
+            Close();
+        }
+
+        // ---- painting --------------------------------------------------------
 
         protected override void OnPaint(PaintEventArgs e)
         {
             base.OnPaint(e);
 
-            e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+            e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
             e.Graphics.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
 
             float scale = Math.Min(ClientSize.Width / 1280f, ClientSize.Height / 800f);
@@ -154,7 +263,8 @@ namespace obd_car_dangerous
             using var red = new SolidBrush(Color.FromArgb(244, 29, 55));
             using var redBright = new SolidBrush(Color.FromArgb(
                 (int)(214 + 41 * pulse), (int)(22 + 60 * pulse), (int)(44 + 36 * pulse)));
-            string family = Services.Loc.FontFamily;
+
+            string family = Loc.FontFamily;
             using var titleFont = new Font(family, 76, FontStyle.Bold);
             using var subtitleFont = new Font(family, 38, FontStyle.Bold);
             using var taglineFont = new Font(family, 27, FontStyle.Bold);
@@ -172,12 +282,12 @@ namespace obd_car_dangerous
 
             graphics.FillEllipse(red, 672, 100, 95, 120);
             graphics.FillPolygon(redBright, new[] { new Point(719, 68), new Point(780, 185), new Point(659, 185) });
-            using var exclamationFont = new Font("Segoe UI", 65, FontStyle.Bold);
+            using var exclamationFont = new Font(family, 65, FontStyle.Bold);
             graphics.DrawString("!", exclamationFont, white, 704, 86);
 
             DrawCenteredString(graphics, "OBD2", titleFont, Color.FromArgb(5, 43, 98), 220);
-            DrawCenteredString(graphics, Services.Loc.T("app.title").Replace("OBD2", string.Empty).Trim(), subtitleFont, Color.FromArgb(5, 43, 98), 325);
-            DrawCenteredString(graphics, Services.Loc.T("app.tagline"), taglineFont, Color.FromArgb(8, 66, 135), 400);
+            DrawCenteredString(graphics, Loc.T("app.title").Replace("OBD2", string.Empty).Trim(), subtitleFont, Color.FromArgb(5, 43, 98), 325);
+            DrawCenteredString(graphics, Loc.T("app.tagline"), taglineFont, Color.FromArgb(8, 66, 135), 400);
         }
 
         private static void DrawCar(Graphics graphics)
@@ -191,13 +301,13 @@ namespace obd_car_dangerous
             {
                 new Point(435, 565), new Point(530, 490), new Point(675, 455),
                 new Point(835, 465), new Point(920, 535), new Point(950, 590),
-                new Point(430, 590)
+                new Point(430, 590),
             });
             using var glass = new SolidBrush(Color.FromArgb(29, 73, 118));
             graphics.FillPolygon(glass, new[]
             {
                 new Point(548, 493), new Point(675, 468), new Point(812, 477),
-                new Point(850, 528), new Point(540, 528)
+                new Point(850, 528), new Point(540, 528),
             });
             graphics.DrawLine(highlight, 470, 552, 560, 532);
             graphics.FillEllipse(dark, 485, 560, 86, 86);
@@ -213,9 +323,9 @@ namespace obd_car_dangerous
 
             using var track = new SolidBrush(Color.FromArgb(45, 111, 173));
             using var fill = new SolidBrush(Color.FromArgb(0, 174, 243));
-            using var statusFont = new Font(Services.Loc.FontFamily, 28, FontStyle.Bold);
+            using var statusFont = new Font(Loc.FontFamily, 26, FontStyle.Bold);
 
-            int barWidth = Math.Max(20, (int)(540 * progress));
+            int barWidth = Math.Max(20, (int)(540 * Math.Clamp(progress, 0f, 1f)));
             FillRoundedRectangle(graphics, track, new Rectangle(370, 675, 540, 20), 10);
             FillRoundedRectangle(graphics, fill, new Rectangle(370, 675, barWidth, 20), 10);
 
@@ -225,9 +335,9 @@ namespace obd_car_dangerous
                 graphics.FillEllipse(head, 370 + barWidth - 18, 669, 32, 32);
             }
 
-            FillRoundedRectangle(graphics, track, new Rectangle(365, 708, 550, 72), 35);
+            FillRoundedRectangle(graphics, track, new Rectangle(305, 708, 670, 72), 35);
             DrawCenteredString(graphics, status, statusFont,
-                Color.FromArgb((int)(150 + 105 * pulse), 255, 255, 255), 720);
+                Color.FromArgb((int)(170 + 85 * pulse), 255, 255, 255), 722);
 
             // Three dots that light up in turn.
             for (int i = 0; i < 3; i++)
@@ -257,11 +367,14 @@ namespace obd_car_dangerous
             graphics.DrawString(text, font, brush, (1280 - size.Width) / 2, y);
         }
 
-        protected override void OnResize(EventArgs e)
+        protected override void Dispose(bool disposing)
         {
-            base.OnResize(e);
-            Invalidate();
-        }
+            if (disposing)
+            {
+                animation.Dispose();
+            }
 
+            base.Dispose(disposing);
+        }
     }
 }

@@ -14,6 +14,17 @@ namespace obd_car_dangerous
             // see https://aka.ms/applicationconfiguration.
             ApplicationConfiguration.Initialize();
 
+            // Checks the ELM327 parsing against canned adapter answers; no hardware needed.
+            if (args.Length > 0 && args[0] == "--selftest")
+            {
+                string log = Path.Combine(Path.GetTempPath(), "obd-selftest.txt");
+                using var writer = new StreamWriter(log);
+                int failures = Services.Obd.ObdSelfTest.Run(writer);
+                writer.Flush();
+                Environment.ExitCode = failures;
+                return;
+            }
+
             // Developer aid: render every screen to PNG and exit, no window needed.
             if (args.Length > 0 && args[0] == "--render")
             {
@@ -36,7 +47,7 @@ namespace obd_car_dangerous
 
             AppState.Start();
 
-            using (var splash = new Form1())
+            using (var splash = new SplashForm())
             {
                 splash.ShowDialog();
             }

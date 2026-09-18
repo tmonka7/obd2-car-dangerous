@@ -120,11 +120,8 @@ namespace obd_car_dangerous.Services
 
             Loc.Set(Settings.Language);
             Ui.Theme.Dark = Settings.DarkMode;
-            if (!Settings.AutoConnect)
-            {
-                Connection.Disconnect();
-            }
 
+            // The splash screen opens the adapter (or falls back to demo) before the shell appears.
             Telemetry.Start();
         }
 

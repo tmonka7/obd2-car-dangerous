@@ -38,8 +38,8 @@ namespace obd_car_dangerous.Pages
         {
             Draw.Text(g, Title, Draw.Font(36, FontStyle.Bold), Theme.Text, pad, 26);
 
-            bool online = AppState.Connection.IsConnected;
-            Color color = online ? Theme.Good : Theme.Warn;
+            bool live = AppState.Connection.IsLive;
+            Color color = live ? Theme.Good : AppState.Connection.IsDemo ? Theme.Warn : Theme.TextSoft;
             var chip = new RectangleF(pad, 80, 210, 40);
             Draw.FillRounded(g, Draw.Alpha(color, 38), chip, 20f);
             g.FillEllipse(new SolidBrush(color), chip.X + 14, chip.Y + 13, 14, 14);

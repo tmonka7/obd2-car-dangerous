@@ -15,6 +15,7 @@ namespace obd_car_dangerous
             Directory.CreateDirectory(folder);
             Theme.Dark = dark;
             Loc.Set(AppState.Settings.Language);
+            AppState.Connection.EnterDemo();
             AppState.Telemetry.Warmup(900);
 
             var shell = new HeadlessShell();
@@ -92,7 +93,7 @@ namespace obd_car_dangerous
         {
             foreach ((string name, float phase) in new[] { ("00-splash-bright", 1.57f), ("00-splash-dim", 4.71f) })
             {
-                using var splash = new Form1();
+                using var splash = new SplashForm();
                 splash.Size = new Size(width, height);
                 splash.PreviewFrame(0.55f, phase);
 

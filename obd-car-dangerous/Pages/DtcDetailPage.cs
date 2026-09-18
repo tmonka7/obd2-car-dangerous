@@ -89,14 +89,26 @@ namespace obd_car_dangerous.Pages
             if (!cleared)
             {
                 var button = new RectangleF(W / 2f - 220, H - pad - 62, 440, 58);
+                bool live = AppState.Connection.IsLive;
+                DtcRecord current = record;
+
                 DrawButton(g, button, Loc.T("detail.clear"), Theme.Accent, Color.White, () => OpenModal(
-                    Loc.T("detail.clear.title", record.Code),
-                    Loc.T("detail.clear.body"),
+                    Loc.T("detail.clear.title", current.Code),
+                    Loc.T(live ? "detail.clear.body.live" : "detail.clear.body"),
                     Loc.T("detail.clear.ok"),
                     Theme.Critical,
-                    () =>
+                    async () =>
                     {
-                        AppState.Dtc.Clear(record);
+                        // A car only offers mode 04, which clears the lot; demo mode can drop one code.
+                        if (live)
+                        {
+                            await AppState.Dtc.ClearAsync();
+                        }
+                        else
+                        {
+                            AppState.Dtc.Clear(current);
+                        }
+
                         Shell.RefreshShell();
                     }), "detail-clear", 15f);
             }

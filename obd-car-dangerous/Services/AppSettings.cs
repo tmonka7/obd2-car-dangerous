@@ -15,6 +15,9 @@ namespace obd_car_dangerous.Services
 
         public bool AutoConnect { get; set; } = true;
 
+        /// <summary>Address of the adapter that last worked, tried first on the next start.</summary>
+        public string LastAdapter { get; set; } = string.Empty;
+
         public bool AlertSound { get; set; } = true;
 
         public bool DarkMode { get; set; }

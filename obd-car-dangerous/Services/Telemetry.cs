@@ -221,15 +221,62 @@ namespace obd_car_dangerous.Services
 
         private void Step()
         {
-            if (!AppState.Connection.IsConnected)
+            float dt = TickMs / 1000f;
+
+            if (AppState.Connection.IsLive)
+            {
+                ReadLive();
+            }
+            else if (AppState.Connection.IsDemo)
+            {
+                Simulate(dt);
+            }
+            else
             {
                 // No adapter: the engine data freezes, only the clock keeps moving.
                 Updated?.Invoke(this, EventArgs.Empty);
                 return;
             }
 
-            float dt = TickMs / 1000f;
+            Integrate(dt);
+            CheckThresholds();
+            Updated?.Invoke(this, EventArgs.Empty);
+        }
 
+        /// <summary>Copies the latest PID values the worker thread read from the ECU.</summary>
+        private void ReadLive()
+        {
+            Obd.ObdSnapshot snapshot = AppState.Connection.Link.Snapshot;
+
+            Rpm = snapshot.Get("rpm") ?? Rpm;
+            Speed = snapshot.Get("speed") ?? Speed;
+            CoolantTemp = snapshot.Get("coolant") ?? CoolantTemp;
+            IntakeTemp = snapshot.Get("intake") ?? IntakeTemp;
+            EngineLoad = snapshot.Get("load") ?? EngineLoad;
+            Throttle = snapshot.Get("throttle") ?? Throttle;
+            MafRate = snapshot.Get("maf") ?? MafRate;
+            ManifoldPressure = snapshot.Get("map") ?? ManifoldPressure;
+            TimingAdvance = snapshot.Get("timing") ?? TimingAdvance;
+            OilTemp = snapshot.Get("oil") ?? OilTemp;
+            FuelLevel = snapshot.Get("fuellevel") ?? FuelLevel;
+            FuelPressure = snapshot.Get("fuelpressure") ?? FuelPressure;
+            O2Voltage = snapshot.Get("o2") ?? O2Voltage;
+            ShortFuelTrim = snapshot.Get("stft") ?? ShortFuelTrim;
+            LongFuelTrim = snapshot.Get("ltft") ?? LongFuelTrim;
+            CatalystTemp = snapshot.Get("catalyst") ?? CatalystTemp;
+            EgrError = snapshot.Get("egr") ?? EgrError;
+            EvapPressure = snapshot.Get("evap") ?? EvapPressure;
+            BatteryVoltage = snapshot.Get("battery") ?? BatteryVoltage;
+            AmbientTemp = snapshot.Get("ambient") ?? AmbientTemp;
+            BarometricPressure = snapshot.Get("baro") ?? BarometricPressure;
+
+            // Fuel rate PID 0x5E is optional; air mass gives a good estimate when it is missing.
+            FuelRate = snapshot.Get("fuelrate") ?? Math.Max(0f, MafRate * 3600f / (14.7f * 745f));
+        }
+
+        /// <summary>Drive cycle simulation used in demo mode.</summary>
+        private void Simulate(float dt)
+        {
             // Drive cycle: pick a new target speed every few seconds.
             if (--phaseTicks <= 0)
             {
@@ -282,6 +329,12 @@ namespace obd_car_dangerous.Services
 
             // Fuel: litres per hour derived from air mass, then economy.
             FuelRate = Math.Max(0.6f, MafRate / 14.7f / 0.745f * 3.6f);
+            FuelLevel = Math.Max(0, FuelLevel - Speed * dt / 3600f * 0.09f);
+        }
+
+        /// <summary>Shared for live and demo data: economy, trip totals and the rolling history.</summary>
+        private void Integrate(float dt)
+        {
             InstantConsumption = Speed < 3 ? 0 : Math.Min(40f, FuelRate / Speed * 100f);
             if (Speed > 3)
             {
@@ -289,19 +342,14 @@ namespace obd_car_dangerous.Services
                 AverageConsumption = consumptionAccumulator;
             }
 
-            float km = Speed * dt / 3600f;
-            DistanceKm += km;
+            DistanceKm += Speed * dt / 3600f;
             DrivingSeconds += dt;
             MaxSpeed = Math.Max(MaxSpeed, Speed);
-            FuelLevel = Math.Max(0, FuelLevel - km * 0.09f);
 
             foreach (Pid pid in Pids)
             {
                 history[pid.Key].Add(pid.Read(this));
             }
-
-            CheckThresholds();
-            Updated?.Invoke(this, EventArgs.Empty);
         }
 
         private DateTime lastThresholdAlert = DateTime.MinValue;

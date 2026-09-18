@@ -62,7 +62,18 @@ namespace obd_car_dangerous
                 RefreshShell();
             };
 
-            faultTimer.Tick += (_, _) => MaybeInjectFault();
+            faultTimer.Tick += async (_, _) =>
+            {
+                if (AppState.Connection.IsLive)
+                {
+                    // Ask the ECU again so a fault that appears while driving shows up.
+                    await AppState.Dtc.RefreshFromVehicleAsync();
+                }
+                else
+                {
+                    MaybeInjectFault();
+                }
+            };
             faultTimer.Start();
 
             Load += (_, _) =>
@@ -227,9 +238,13 @@ namespace obd_car_dangerous
 
         public void CloseDanger() => overlay?.RequestClose();
 
+        /// <summary>
+        /// Demo only: invents a fault now and then so the alert flow can be seen without a car.
+        /// On a real adapter the codes come from the ECU, never from here.
+        /// </summary>
         private void MaybeInjectFault()
         {
-            if (!AppState.Settings.NotifyNewDtc || !AppState.Connection.IsConnected || overlay is not null)
+            if (!AppState.Settings.NotifyNewDtc || !AppState.Connection.IsDemo || overlay is not null)
             {
                 return;
             }

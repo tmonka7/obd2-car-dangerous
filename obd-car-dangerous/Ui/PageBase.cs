@@ -283,8 +283,10 @@ namespace obd_car_dangerous.Ui
             right -= 36;
 
             var linkBox = new RectangleF(right - 26, mid - 13, 26, 26);
-            Icons.Draw(g, Services.AppState.Connection.IsConnected ? "bluetooth" : "wifi", linkBox,
-                Services.AppState.Connection.IsConnected ? Color.FromArgb(120, 230, 160) : Draw.Alpha(Color.White, 150), Theme.ShellTop);
+            Icons.Draw(g, Services.AppState.Connection.IsLive ? "bluetooth" : "chart", linkBox,
+                Services.AppState.Connection.IsLive ? Color.FromArgb(120, 230, 160)
+                    : Services.AppState.Connection.IsDemo ? Color.FromArgb(250, 205, 90)
+                    : Draw.Alpha(Color.White, 150), Theme.ShellTop);
             right -= 44;
 
             string clock = DateTime.Now.ToString("HH:mm");

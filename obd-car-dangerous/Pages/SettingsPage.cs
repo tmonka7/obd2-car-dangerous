@@ -1,5 +1,6 @@
 using System.Drawing.Drawing2D;
 using obd_car_dangerous.Services;
+using obd_car_dangerous.Services.Obd;
 using obd_car_dangerous.Ui;
 
 namespace obd_car_dangerous.Pages
@@ -243,7 +244,11 @@ namespace obd_car_dangerous.Pages
             Draw.FillRounded(g, Draw.Alpha(Theme.CardAlt, Theme.Dark ? 255 : 150), hero, 18f);
 
             bool connected = link.IsConnected;
-            Color color = connected ? Theme.Good : link.State == Services.LinkState.Connecting ? Theme.Warn : Theme.TextSoft;
+            bool live = link.IsLive;
+            Color color = live ? Theme.Good
+                : link.IsDemo ? Theme.Warn
+                : link.State == Services.LinkState.Connecting ? Theme.Warn
+                : Theme.TextSoft;
 
             var circle = new RectangleF(hero.X + hero.Width / 2f - 58, hero.Y + 24, 116, 116);
             using (var brush = new SolidBrush(color))
@@ -251,21 +256,36 @@ namespace obd_car_dangerous.Pages
                 g.FillEllipse(brush, circle);
             }
 
-            if (connected)
+            if (live)
             {
                 Draw.CheckMark(g, circle, Color.White, 9f);
             }
             else
             {
-                Icons.Draw(g, "bluetooth", RectangleF.Inflate(circle, -34, -34), Color.White, color);
+                Icons.Draw(g, link.IsDemo ? "chart" : "bluetooth", RectangleF.Inflate(circle, -34, -34), Color.White, color);
             }
 
             Draw.TextCentered(g, link.StatusText, Draw.Font(34, FontStyle.Bold), Theme.Text,
                 new RectangleF(hero.X, circle.Bottom + 10, hero.Width, 44));
-            Draw.TextCentered(g, $"{link.Current.Name} ({link.Current.Transport})", Draw.Font(21), Theme.TextSoft,
+            string endpointLabel = link.Current.Kind == EndpointKind.Demo
+                ? link.Current.Name
+                : $"{link.Current.Name} ({link.Current.Transport})";
+            Draw.TextCentered(g, endpointLabel, Draw.Font(21), Theme.TextSoft,
                 new RectangleF(hero.X, circle.Bottom + 54, hero.Width, 30));
-            Draw.TextCentered(g, connected ? Loc.T("conn.protocol", link.Protocol) : Loc.T("conn.nolink"), Draw.Font(21), Theme.TextSoft,
-                new RectangleF(hero.X, circle.Bottom + 84, hero.Width, 30));
+
+            string detail = live
+                ? Loc.T("conn.protocol", link.Protocol)
+                : link.IsDemo ? Loc.T("state.demo.note")
+                : link.Detail.Length > 0 ? link.Detail
+                : Loc.T("conn.nolink");
+            Draw.TextCentered(g, detail, Draw.Font(20), Theme.TextSoft,
+                new RectangleF(hero.X + 20, circle.Bottom + 84, hero.Width - 40, 30));
+
+            if (live && link.Link.Vin is { Length: > 0 } vin)
+            {
+                Draw.TextCentered(g, Loc.T("conn.vin", vin), Draw.Font(18), Theme.TextSoft,
+                    new RectangleF(hero.X, circle.Bottom + 114, hero.Width, 28));
+            }
 
             rowY = hero.Bottom + 16;
 
@@ -283,45 +303,51 @@ namespace obd_car_dangerous.Pages
             }
 
             DrawButton(g, new RectangleF(buttons.X + half + 16, buttons.Y, half, buttons.Height),
-                link.Scanning ? Loc.T("conn.scanning") : Loc.T("conn.scan"), Theme.Accent, Color.White, () => link.Scan(), "conn-scan");
+                link.Scanning ? Loc.T("conn.scanning") : Loc.T("conn.refresh"), Theme.Accent, Color.White, () => link.Scan(), "conn-scan");
 
             rowY = buttons.Bottom + 18;
 
             Draw.Text(g, Loc.T("conn.available"), Draw.Font(20, FontStyle.Bold), Theme.TextSoft, bounds.X, rowY);
             rowY += 34;
 
-            foreach (Adapter adapter in link.Found)
+            foreach (ObdEndpoint endpoint in link.Found)
             {
-                RectangleF row = NextRow(bounds, 62);
-                if (row.Bottom > bounds.Bottom - 40)
+                RectangleF row = NextRow(bounds, 58);
+                if (row.Bottom > bounds.Bottom - 54)
                 {
                     break;
                 }
 
-                string id = $"adapter-{adapter.Address}";
-                bool current = adapter.Address == link.Current.Address;
+                string id = $"adapter-{endpoint.Address}";
+                bool current = endpoint.Address == link.Current.Address;
+                bool activeNow = current && connected;
                 Draw.FillRounded(g, IsHover(id) ? Theme.CardAlt : Draw.Alpha(Theme.CardAlt, Theme.Dark ? 255 : 140), row, 12f);
 
-                Icons.Draw(g, adapter.Transport.StartsWith("Wi") ? "wifi" : "bluetooth",
-                    new RectangleF(row.X + 16, row.Y + 16, 30, 30), current && connected ? Theme.Good : Theme.TextSoft, Theme.CardAlt);
+                string icon = endpoint.Kind switch
+                {
+                    EndpointKind.WiFi => "wifi",
+                    EndpointKind.Demo => "chart",
+                    _ => "bluetooth",
+                };
+                Icons.Draw(g, icon, new RectangleF(row.X + 16, row.Y + 14, 30, 30),
+                    activeNow ? Theme.Good : Theme.TextSoft, Theme.CardAlt);
 
-                Draw.TextIn(g, adapter.Name, Draw.Font(21, FontStyle.Bold), Theme.Text,
-                    new RectangleF(row.X + 58, row.Y, 260, row.Height), StringAlignment.Near, StringAlignment.Center, false);
-                Draw.TextIn(g, adapter.Address, Draw.Font(17), Theme.TextSoft,
-                    new RectangleF(row.X + 320, row.Y, row.Width - 460, row.Height), StringAlignment.Near, StringAlignment.Center, false);
-                Draw.TextIn(g, current && connected ? Loc.T("state.connected") : Loc.T("conn.tap"), Draw.Font(17, FontStyle.Bold),
-                    current && connected ? Theme.Good : Theme.Accent,
+                Draw.TextIn(g, endpoint.Name, Draw.Font(21, FontStyle.Bold), Theme.Text,
+                    new RectangleF(row.X + 58, row.Y, 240, row.Height), StringAlignment.Near, StringAlignment.Center, false);
+                Draw.TextIn(g, endpoint.Kind == EndpointKind.Demo ? Loc.T("state.demo.note") : endpoint.Address,
+                    Draw.Font(17), Theme.TextSoft,
+                    new RectangleF(row.X + 300, row.Y, row.Width - 460, row.Height), StringAlignment.Near, StringAlignment.Center, false);
+                Draw.TextIn(g, activeNow ? Loc.T("state.connected") : Loc.T("conn.tap"), Draw.Font(17, FontStyle.Bold),
+                    activeNow ? Theme.Good : Theme.Accent,
                     new RectangleF(row.Right - 200, row.Y, 184, row.Height), StringAlignment.Far, StringAlignment.Center, false);
 
-                Adapter captured = adapter;
+                ObdEndpoint captured = endpoint;
                 Hit(row, () => link.Connect(captured), id);
             }
 
-            if (connected)
-            {
-                Draw.TextIn(g, Loc.T("conn.signal", link.SignalStrength, link.Firmware), Draw.Font(17), Theme.TextSoft,
-                    new RectangleF(bounds.X, bounds.Bottom - 30, bounds.Width, 28), StringAlignment.Near, StringAlignment.Center, false);
-            }
+            Draw.TextIn(g, live ? Loc.T("conn.signal", link.SignalStrength, link.Firmware) : Loc.T("conn.hint"),
+                Draw.Font(17), Theme.TextSoft,
+                new RectangleF(bounds.X, bounds.Bottom - 46, bounds.Width, 44), StringAlignment.Near, StringAlignment.Center);
         }
 
         private void DrawAlerts(Graphics g, RectangleF bounds)
