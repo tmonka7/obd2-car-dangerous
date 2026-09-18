@@ -43,6 +43,9 @@ namespace obd_car_dangerous.Ui
         /// <summary>True when the header should offer a back arrow.</summary>
         public virtual bool ShowBack => false;
 
+        /// <summary>True when the page has a text field, so the shell leaves typing keys alone.</summary>
+        public virtual bool WantsTextInput => false;
+
         /// <summary>Pixels per design unit.</summary>
         protected float S { get; private set; } = 1f;
 

@@ -8,7 +8,7 @@ namespace obd_car_dangerous.Pages
     {
         private int filter;
 
-        public override string Title => "Alarm History";
+        public override string Title => Loc.T("alarms.title");
 
         public override bool ShowBack => true;
 
@@ -21,9 +21,9 @@ namespace obd_car_dangerous.Pages
 
             (string Label, Color Color)[] filters =
             {
-                ("All", Theme.Accent),
-                ("Warning", Theme.Warn),
-                ("Critical", Theme.Critical),
+                (Loc.T("common.all"), Theme.Accent),
+                (Loc.T("common.warning"), Theme.Warn),
+                (Loc.T("common.critical"), Theme.Critical),
             };
 
             var tabsRect = new RectangleF(pad, top + 18, W - pad * 2, 58);
@@ -76,7 +76,7 @@ namespace obd_car_dangerous.Pages
 
             if (entries.Count == 0)
             {
-                Draw.TextCentered(g, "No alarms recorded for this filter.", Draw.Font(21), Theme.TextSoft, bounds);
+                Draw.TextCentered(g, Loc.T("alarms.empty"), Draw.Font(21), Theme.TextSoft, bounds);
                 ScrollMaxY = 0;
                 return;
             }
@@ -105,6 +105,13 @@ namespace obd_car_dangerous.Pages
             DrawScrollbar(g, new RectangleF(bounds.Right + 4, bounds.Y + 10, 8, bounds.Height - 20));
         }
 
+        private static string LevelText(AlarmLevel level) => level switch
+        {
+            AlarmLevel.Critical => Loc.T("common.critical"),
+            AlarmLevel.Warning => Loc.T("common.warning"),
+            _ => Loc.T("common.info"),
+        };
+
         private void DrawRow(Graphics g, RectangleF row, AlarmEntry entry)
         {
             string id = $"alarm-{entry.Time.Ticks}-{entry.Code}";
@@ -130,7 +137,7 @@ namespace obd_car_dangerous.Pages
                 new RectangleF(row.X + 306, row.Y, row.Width - 460, row.Height), StringAlignment.Near, StringAlignment.Center, false);
 
             var pill = new RectangleF(row.Right - 140, row.Y + (row.Height - 34) / 2f, 122, 34);
-            Draw.Pill(g, pill, Draw.Alpha(level, 38), entry.Level.ToString(), Draw.Font(17, FontStyle.Bold), level);
+            Draw.Pill(g, pill, Draw.Alpha(level, 38), LevelText(entry.Level), Draw.Font(17, FontStyle.Bold), level);
 
             using var pen = new Pen(Theme.Border, 1f);
             g.DrawLine(pen, row.X + 10, row.Bottom, row.Right - 10, row.Bottom);

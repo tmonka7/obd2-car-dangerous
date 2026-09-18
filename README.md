@@ -16,6 +16,7 @@ The splash screen appears first (click or press a key to skip), then the main sh
 | Key | Action |
 | --- | --- |
 | `F1` / `F2` / `F3` / `F4` | Home / Diagnostics / Live Data / DTC Codes |
+| Typing (Dictionary page) | Searches codes; `Backspace` deletes, `Delete` clears |
 | `F11` | Toggle full screen |
 | `Esc` | Close the danger alert, else leave full screen, else go back |
 | `Alt+Left`, `Backspace` | Back |
@@ -33,6 +34,7 @@ The splash screen appears first (click or press a key to skip), then the main sh
 | Live Data Graph | `Pages/LiveGraphPage.cs` | One parameter over 1, 5 or 10 minutes |
 | DTC Codes | `Pages/DtcCodesPage.cs` | Current / Pending / History, clear codes |
 | DTC Details | `Pages/DtcDetailPage.cs` | Causes, effect, freeze frame |
+| OBD2 Dictionary | `Pages/DictionaryPage.cs` | ~890 generic codes, type-to-search, category filters |
 | Danger Alert | `Pages/DangerOverlay.cs` | Full screen warning over everything |
 | Fuel Consumption | `Pages/FuelPage.cs` | Average / Instant / Trip |
 | Trip Information | `Pages/TripPage.cs` | Distance, time, speeds, reset |
@@ -49,8 +51,20 @@ The splash screen appears first (click or press a key to skip), then the main sh
 - `Ui/Sidebar.cs` - navigation rail; collapses to icons below 1180 px wide or via the hamburger.
 - `MainForm.cs` - shell, navigation stack, full screen handling, danger alerts, screen keep-alive.
 - `Services/` - `Telemetry` (simulated ELM327 stream plus 10 minutes of history per PID), `DtcStore`
-  (fault codes and the alarm log), `ConnectionService`, `AppSettings` (persisted to
-  `%AppData%\ObdCarDangerous\settings.json`) and `AppState` which ties them together.
+  (fault codes and the alarm log), `DtcCatalog` (the code dictionary), `ConnectionService`,
+  `Loc` (translations), `AppSettings` (persisted to `%AppData%\ObdCarDangerous\settings.json`)
+  and `AppState` which ties them together.
+
+## Languages
+
+English, Japanese (日本語) and Chinese (中文), switched under Settings > General > Language and
+applied immediately - no restart. All UI text goes through `Loc.T("key")` in
+`Services/Localization.cs`; add a language by adding a name to `Loc.Languages`, a font family in
+`Loc.Set` and one more entry per row of the table.
+
+Trouble code descriptions stay in the SAE J2012 English wording on purpose: that is what workshops,
+manuals and other scan tools quote, so a translated description would be harder to match up. The
+dictionary page says so at the bottom of its detail panel.
 
 ### Connecting a real adapter
 

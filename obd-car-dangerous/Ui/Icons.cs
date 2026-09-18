@@ -166,6 +166,28 @@ namespace obd_car_dangerous.Ui
                     g.DrawLines(pen, new[] { P(b, 0.5f, 0.32f), P(b, 0.5f, 0.54f), P(b, 0.68f, 0.64f) });
                     break;
 
+                case "search":
+                    g.DrawEllipse(pen, b.X + s * 0.14f, b.Y + s * 0.14f, s * 0.52f, s * 0.52f);
+                    g.DrawLine(pen, P(b, 0.63f, 0.63f), P(b, 0.88f, 0.88f));
+                    break;
+
+                case "book":
+                    g.DrawLines(pen, new[]
+                    {
+                        P(b, 0.5f, 0.24f), P(b, 0.5f, 0.86f),
+                    });
+                    g.DrawLines(pen, new[]
+                    {
+                        P(b, 0.5f, 0.24f), P(b, 0.2f, 0.14f), P(b, 0.1f, 0.18f), P(b, 0.1f, 0.78f),
+                        P(b, 0.2f, 0.74f), P(b, 0.5f, 0.86f),
+                    });
+                    g.DrawLines(pen, new[]
+                    {
+                        P(b, 0.5f, 0.24f), P(b, 0.8f, 0.14f), P(b, 0.9f, 0.18f), P(b, 0.9f, 0.78f),
+                        P(b, 0.8f, 0.74f), P(b, 0.5f, 0.86f),
+                    });
+                    break;
+
                 case "menu":
                     g.DrawLine(pen, P(b, 0.15f, 0.3f), P(b, 0.85f, 0.3f));
                     g.DrawLine(pen, P(b, 0.15f, 0.5f), P(b, 0.85f, 0.5f));

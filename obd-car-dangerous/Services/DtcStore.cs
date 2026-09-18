@@ -102,7 +102,7 @@ namespace obd_car_dangerous.Services
 
             if (cleared > 0)
             {
-                alarms.Insert(0, new AlarmEntry(DateTime.Now, "CLEAR", $"{cleared} fault code(s) cleared by user", AlarmLevel.Info));
+                alarms.Insert(0, new AlarmEntry(DateTime.Now, "CLEAR", Loc.T("alarms.cleared", cleared), AlarmLevel.Info));
                 Changed?.Invoke(this, EventArgs.Empty);
             }
 

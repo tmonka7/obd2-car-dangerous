@@ -62,9 +62,9 @@ namespace obd_car_dangerous.Services
 
         public string StatusText => State switch
         {
-            LinkState.Connected => "Connected",
-            LinkState.Connecting => "Connecting" + new string('.', 3 - Math.Max(0, ticks % 3)),
-            _ => "Disconnected",
+            LinkState.Connected => Loc.T("state.connected"),
+            LinkState.Connecting => Loc.T("state.connecting") + new string('.', 3 - Math.Max(0, ticks % 3)),
+            _ => Loc.T("state.disconnected"),
         };
 
         public void Connect(Adapter? adapter = null)

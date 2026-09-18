@@ -14,6 +14,7 @@ namespace obd_car_dangerous
         {
             Directory.CreateDirectory(folder);
             Theme.Dark = dark;
+            Loc.Set(AppState.Settings.Language);
             AppState.Telemetry.Warmup(900);
 
             var shell = new HeadlessShell();
@@ -24,9 +25,11 @@ namespace obd_car_dangerous
                 ("03-livedata", new LiveDataPage(), null),
                 ("04-dtc-codes", new DtcCodesPage(), null),
                 ("05-dtc-detail", new DtcDetailPage(), AppState.Dtc.Find("P0101")),
-                ("06-danger-alert", new DangerOverlay("Danger Alert!", "P0101",
+                ("06-danger-alert", new DangerOverlay("P0101",
                     "This may cause poor fuel economy, reduced power, or engine misfire.", AppState.Dtc.Find("P0101")), null),
                 ("07-live-graph", new LiveGraphPage(), "rpm"),
+                ("07b-dictionary", new DictionaryPage(), null),
+                ("07c-dictionary-search", new DictionaryPage(), "P042"),
                 ("08-fuel", new FuelPage(), null),
                 ("09-trip", new TripPage(), null),
                 ("10-alarms", new AlarmHistoryPage(), null),
@@ -78,8 +81,25 @@ namespace obd_car_dangerous
                 page.Dispose();
             }
 
+            RenderSplashFrames(folder, width, height);
+
             sidebar.Dispose();
             Console.WriteLine($"Rendered {screens.Length} screens to {folder}");
+        }
+
+        /// <summary>Two frames of the splash, half a blink apart, so the pulse can be checked.</summary>
+        private static void RenderSplashFrames(string folder, int width, int height)
+        {
+            foreach ((string name, float phase) in new[] { ("00-splash-bright", 1.57f), ("00-splash-dim", 4.71f) })
+            {
+                using var splash = new Form1();
+                splash.Size = new Size(width, height);
+                splash.PreviewFrame(0.55f, phase);
+
+                using var image = new Bitmap(width, height);
+                splash.DrawToBitmap(image, new Rectangle(0, 0, width, height));
+                image.Save(Path.Combine(folder, $"{name}.png"), System.Drawing.Imaging.ImageFormat.Png);
+            }
         }
 
         private static string SidebarKey(string name)
@@ -87,6 +107,11 @@ namespace obd_car_dangerous
             if (name.Contains("settings") || name.Contains("about") || name.Contains("vehicle"))
             {
                 return "settings";
+            }
+
+            if (name.Contains("dictionary"))
+            {
+                return "dictionary";
             }
 
             if (name.Contains("dtc"))

@@ -8,7 +8,7 @@ namespace obd_car_dangerous.Pages
     {
         private int tab;
 
-        public override string Title => "DTC Codes";
+        public override string Title => Loc.T("dtc.title");
 
         public override bool ShowBack => true;
 
@@ -29,9 +29,9 @@ namespace obd_car_dangerous.Pages
 
             string[] labels =
             {
-                $"Current ({AppState.Dtc.Count(DtcStatus.Current)})",
-                $"Pending ({AppState.Dtc.Count(DtcStatus.Pending)})",
-                $"History ({AppState.Dtc.Count(DtcStatus.History)})",
+                Loc.T("dtc.tab", Loc.T("dtc.current"), AppState.Dtc.Count(DtcStatus.Current)),
+                Loc.T("dtc.tab", Loc.T("dtc.pending"), AppState.Dtc.Count(DtcStatus.Pending)),
+                Loc.T("dtc.tab", Loc.T("dtc.history"), AppState.Dtc.Count(DtcStatus.History)),
             };
 
             var tabsRect = new RectangleF(pad, top + 18, W - pad * 2, 58);
@@ -57,11 +57,10 @@ namespace obd_car_dangerous.Pages
                 bool enabled = records.Count > 0;
                 if (enabled)
                 {
-                    DrawButton(g, button, "Clear DTC Codes", Theme.Accent, Color.White, () => OpenModal(
-                        "Clear fault codes?",
-                        "This sends Mode 04 to the ECU. Current and pending codes move to history and the check engine light resets. " +
-                        "Codes come back if the fault is still present.",
-                        "Clear codes",
+                    DrawButton(g, button, Loc.T("dtc.clearall"), Theme.Accent, Color.White, () => OpenModal(
+                        Loc.T("dtc.clear.title"),
+                        Loc.T("dtc.clear.body"),
+                        Loc.T("dtc.clear.ok"),
                         Theme.Critical,
                         () =>
                         {
@@ -77,7 +76,7 @@ namespace obd_car_dangerous.Pages
                 else
                 {
                     Draw.FillRounded(g, Theme.Dark ? Color.FromArgb(28, 52, 84) : Color.FromArgb(226, 233, 242), button, 16f);
-                    Draw.TextCentered(g, "Nothing to clear", Draw.Font(22, FontStyle.Bold), Theme.TextSoft, button);
+                    Draw.TextCentered(g, Loc.T("dtc.nothing"), Draw.Font(22, FontStyle.Bold), Theme.TextSoft, button);
                 }
             }
 
@@ -91,9 +90,9 @@ namespace obd_car_dangerous.Pages
                 Draw.Card(g, bounds, 18f);
                 Draw.TextCentered(g, status switch
                 {
-                    DtcStatus.Current => "No current fault codes - the vehicle reports no active problems.",
-                    DtcStatus.Pending => "No pending codes. Intermittent faults appear here before they become current.",
-                    _ => "History is empty.",
+                    DtcStatus.Current => Loc.T("dtc.empty.current"),
+                    DtcStatus.Pending => Loc.T("dtc.empty.pending"),
+                    _ => Loc.T("dtc.empty.history"),
                 }, Draw.Font(22), Theme.TextSoft, bounds);
                 return;
             }
@@ -140,7 +139,7 @@ namespace obd_car_dangerous.Pages
             Draw.TextIn(g, record.Description, Draw.Font(21), Theme.Accent,
                 new RectangleF(badge.Right + 180, row.Y + 16, row.Width - 520, row.Height - 32), StringAlignment.Near, StringAlignment.Center);
 
-            Draw.TextIn(g, $"{record.Severity} · {record.System}", Draw.Font(17, FontStyle.Bold), Theme.Severity(record.Severity),
+            Draw.TextIn(g, $"{Loc.Severity(record.Severity)} · {Loc.SystemName(record.System)}", Draw.Font(17, FontStyle.Bold), Theme.Severity(record.Severity),
                 new RectangleF(row.Right - 300, row.Y + 14, 250, row.Height / 2f - 6), StringAlignment.Far, StringAlignment.Center, false);
             Draw.TextIn(g, Ago(record.DetectedAt), Draw.Font(16), Theme.TextSoft,
                 new RectangleF(row.Right - 300, row.Y + row.Height / 2f - 4, 250, row.Height / 2f - 10), StringAlignment.Far, StringAlignment.Center, false);
@@ -154,20 +153,20 @@ namespace obd_car_dangerous.Pages
             TimeSpan span = DateTime.Now - time;
             if (span.TotalMinutes < 1)
             {
-                return "just now";
+                return Loc.T("common.justnow");
             }
 
             if (span.TotalHours < 1)
             {
-                return $"{span.TotalMinutes:0} min ago";
+                return Loc.T("common.minago", span.TotalMinutes.ToString("0"));
             }
 
             if (span.TotalDays < 1)
             {
-                return $"{span.TotalHours:0} h ago";
+                return Loc.T("common.hourago", span.TotalHours.ToString("0"));
             }
 
-            return $"{span.TotalDays:0} d ago";
+            return Loc.T("common.dayago", span.TotalDays.ToString("0"));
         }
     }
 }

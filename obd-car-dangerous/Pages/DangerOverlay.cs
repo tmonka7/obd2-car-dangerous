@@ -8,15 +8,14 @@ namespace obd_car_dangerous.Pages
     internal sealed class DangerOverlay : PageBase
     {
         private readonly System.Windows.Forms.Timer pulseTimer = new() { Interval = 40 };
-        private readonly string title;
         private readonly string code;
         private readonly string message;
         private readonly DtcRecord? record;
         private float pulse;
 
-        public DangerOverlay(string title, string code, string message, DtcRecord? record)
+        /// <summary>The heading is always the translated "Danger Alert!"; the caller supplies the body.</summary>
+        public DangerOverlay(string code, string message, DtcRecord? record)
         {
-            this.title = title;
             this.code = code;
             this.message = message;
             this.record = record;
@@ -68,7 +67,7 @@ namespace obd_car_dangerous.Pages
             var triangle = new RectangleF(W / 2f - triangleW / 2f, 74, triangleW, 178);
             Draw.WarningTriangle(g, triangle, Color.White, Color.FromArgb(214, 32, 48));
 
-            Draw.TextCentered(g, title, Draw.Font(72, FontStyle.Bold), Color.White,
+            Draw.TextCentered(g, Loc.T("danger.title"), Draw.Font(72, FontStyle.Bold), Color.White,
                 new RectangleF(0, triangle.Bottom + 18, W, 90));
 
             string headline = record is not null
@@ -86,7 +85,8 @@ namespace obd_car_dangerous.Pages
 
             if (record is not null)
             {
-                Draw.TextCentered(g, $"Severity {record.Severity}  ·  {record.System}  ·  {record.DetectedAt:HH:mm:ss}",
+                Draw.TextCentered(g,
+                    Loc.T("danger.meta", Loc.Severity(record.Severity), Loc.SystemName(record.System), record.DetectedAt.ToString("HH:mm:ss")),
                     Draw.Font(20, FontStyle.Bold), Draw.Alpha(Color.White, 200),
                     new RectangleF(0, triangle.Bottom + 342, W, 34));
             }
@@ -96,7 +96,7 @@ namespace obd_car_dangerous.Pages
             var details = new RectangleF(W / 2f - buttonW - 14, buttonY, buttonW, 82);
             var clear = new RectangleF(W / 2f + 14, buttonY, buttonW, 82);
 
-            DrawButton(g, details, "View Details", Hovered(Color.FromArgb(247, 66, 80), "danger-details"), Color.White, () =>
+            DrawButton(g, details, Loc.T("danger.details"), Hovered(Color.FromArgb(247, 66, 80), "danger-details"), Color.White, () =>
             {
                 RequestClose();
                 if (record is not null)
@@ -109,7 +109,7 @@ namespace obd_car_dangerous.Pages
                 }
             }, "danger-details", 18f);
 
-            DrawButton(g, clear, record is null ? "Dismiss" : "Clear", Hovered(Color.FromArgb(24, 86, 160), "danger-clear"), Color.White, () =>
+            DrawButton(g, clear, Loc.T(record is null ? "danger.dismiss" : "danger.clear"), Hovered(Color.FromArgb(24, 86, 160), "danger-clear"), Color.White, () =>
             {
                 if (record is not null)
                 {
@@ -119,7 +119,7 @@ namespace obd_car_dangerous.Pages
                 RequestClose();
             }, "danger-clear", 18f);
 
-            Draw.TextCentered(g, "Esc closes this alert", Draw.Font(17), Draw.Alpha(Color.White, 170),
+            Draw.TextCentered(g, Loc.T("danger.esc"), Draw.Font(17), Draw.Alpha(Color.White, 170),
                 new RectangleF(0, H - 38, W, 28));
         }
 

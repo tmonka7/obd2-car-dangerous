@@ -7,12 +7,26 @@ namespace obd_car_dangerous.Ui
     {
         private static readonly Dictionary<(int, FontStyle), Font> FontCache = new();
 
+        static Draw()
+        {
+            // Japanese and Chinese need a different family, so drop the cached fonts on a switch.
+            Services.Loc.Changed += (_, _) =>
+            {
+                foreach (Font cached in FontCache.Values)
+                {
+                    cached.Dispose();
+                }
+
+                FontCache.Clear();
+            };
+        }
+
         public static Font Font(float size, FontStyle style = FontStyle.Regular)
         {
             var key = ((int)Math.Round(size * 4), style);
             if (!FontCache.TryGetValue(key, out Font? font))
             {
-                font = new Font("Segoe UI", size, style, GraphicsUnit.Pixel);
+                font = new Font(Services.Loc.FontFamily, size, style, GraphicsUnit.Pixel);
                 FontCache[key] = font;
             }
 

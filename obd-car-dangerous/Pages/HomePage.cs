@@ -7,17 +7,17 @@ namespace obd_car_dangerous.Pages
     /// <summary>Dashboard: connection state, overall vehicle status and the four quick actions.</summary>
     internal sealed class HomePage : PageBase
     {
-        private sealed record Tile(string Key, string Label, string Icon, Color Color, string Page);
+        private sealed record Tile(string Key, string LabelKey, string Icon, Color Color, string Page);
 
         private static readonly Tile[] Tiles =
         {
-            new("diag", "Diagnostics", "diagnostics", Theme.Orange, "diagnostics"),
-            new("live", "Live Data", "chart", Color.FromArgb(28, 154, 244), "livedata"),
-            new("dtc", "DTC Codes", "alert", Theme.Critical, "dtc"),
-            new("set", "Settings", "settings", Theme.Violet, "settings"),
+            new("diag", "nav.diagnostics", "diagnostics", Theme.Orange, "diagnostics"),
+            new("live", "nav.livedata", "chart", Color.FromArgb(28, 154, 244), "livedata"),
+            new("dtc", "nav.dtc", "alert", Theme.Critical, "dtc"),
+            new("set", "nav.settings", "settings", Theme.Violet, "settings"),
         };
 
-        public override string Title => "OBD2 Car Dangerous System";
+        public override string Title => Loc.T("app.title");
 
         protected override void Render(Graphics g)
         {
@@ -48,7 +48,7 @@ namespace obd_car_dangerous.Pages
             Hit(chip, () => Shell.Navigate("settings", "connection"), "home-chip");
 
             var scan = new RectangleF(chip.Right + 14, 80, 196, 40);
-            Draw.TextIn(g, $"Last scan {AppState.LastScan:HH:mm}", Draw.Font(18), Theme.TextSoft, scan,
+            Draw.TextIn(g, Loc.T("home.lastscan", AppState.LastScan.ToString("HH:mm")), Draw.Font(18), Theme.TextSoft, scan,
                 StringAlignment.Near, StringAlignment.Center, false);
 
             DrawCar(g, new RectangleF(W - 430, 6, 400, 132));
@@ -111,10 +111,10 @@ namespace obd_car_dangerous.Pages
             Color from = critical ? Color.FromArgb(240, 68, 86) : current > 0 ? Color.FromArgb(250, 190, 40) : Color.FromArgb(46, 204, 113);
             Color to = critical ? Color.FromArgb(198, 20, 46) : current > 0 ? Color.FromArgb(236, 150, 20) : Color.FromArgb(22, 160, 95);
 
-            string headline = critical ? "Danger" : current > 0 ? "Attention" : "Normal";
+            string headline = critical ? Loc.T("home.danger") : current > 0 ? Loc.T("home.attention") : Loc.T("home.normal");
             string detail = current == 0
-                ? "No critical fault detected!"
-                : $"{current} active fault code(s) - tap to review";
+                ? Loc.T("home.nofault")
+                : Loc.T("home.faults", current);
 
             Draw.CardShadow(g, bounds, 22f);
             Draw.GradientRounded(g, from, to, bounds, 22f, LinearGradientMode.Horizontal);
@@ -137,7 +137,7 @@ namespace obd_car_dangerous.Pages
             }
 
             float textX = iconBox.Right + 46;
-            Draw.Text(g, "Vehicle Status", Draw.Font(28, FontStyle.Regular), Draw.Alpha(Color.White, 225), textX, bounds.Y + 36);
+            Draw.Text(g, Loc.T("home.status"), Draw.Font(28, FontStyle.Regular), Draw.Alpha(Color.White, 225), textX, bounds.Y + 36);
             Draw.Text(g, headline, Draw.Font(64, FontStyle.Bold), Color.White, textX, bounds.Y + 70);
             Draw.Text(g, detail, Draw.Font(22), Draw.Alpha(Color.White, 225), textX, bounds.Y + 152);
 
@@ -146,7 +146,7 @@ namespace obd_car_dangerous.Pages
             Draw.RingGauge(g, ringBox, AppState.HealthScore / 100f, Draw.Alpha(Color.White, 210), Color.White, 12f);
             Draw.TextCentered(g, AppState.HealthScore.ToString(), Draw.Font(42, FontStyle.Bold), Color.White,
                 new RectangleF(ringBox.X, ringBox.Y + 34, ringBox.Width, 48));
-            Draw.TextCentered(g, "HEALTH", Draw.Font(16, FontStyle.Bold), Draw.Alpha(Color.White, 215),
+            Draw.TextCentered(g, Loc.T("common.health"), Draw.Font(16, FontStyle.Bold), Draw.Alpha(Color.White, 215),
                 new RectangleF(ringBox.X, ringBox.Y + 84, ringBox.Width, 24));
 
             Hit(bounds, () => Shell.Navigate(current > 0 ? "dtc" : "diagnostics"), "home-status");
@@ -171,7 +171,7 @@ namespace obd_car_dangerous.Pages
                 Draw.FillRounded(g, fill, iconRect, size * 0.24f);
                 Icons.Draw(g, tile.Icon, RectangleF.Inflate(iconRect, -size * 0.26f, -size * 0.26f), Color.White, fill);
 
-                Draw.TextIn(g, tile.Label, Draw.Font(23, FontStyle.Bold), Theme.Text,
+                Draw.TextIn(g, Loc.T(tile.LabelKey), Draw.Font(23, FontStyle.Bold), Theme.Text,
                     new RectangleF(rect.X, iconRect.Bottom + 10, rect.Width, 40), StringAlignment.Center, StringAlignment.Center, false);
 
                 if (tile.Key == "dtc")
@@ -197,13 +197,13 @@ namespace obd_car_dangerous.Pages
 
             (string Label, string Value, string Unit, float Fraction, Color Color, string Page)[] items =
             {
-                ("Engine RPM", $"{AppState.Telemetry.Rpm:0}", "rpm", AppState.Telemetry.Rpm / 6000f, Theme.Accent, "livedata"),
-                ("Vehicle Speed", $"{AppState.Settings.Speed(AppState.Telemetry.Speed):0}", AppState.Settings.SpeedUnit,
+                (Loc.Pid("rpm", "Engine RPM"), $"{AppState.Telemetry.Rpm:0}", "rpm", AppState.Telemetry.Rpm / 6000f, Theme.Accent, "livedata"),
+                (Loc.Pid("speed", "Vehicle Speed"), $"{AppState.Settings.Speed(AppState.Telemetry.Speed):0}", AppState.Settings.SpeedUnit,
                     AppState.Telemetry.Speed / 220f, Theme.Good, "livedata"),
-                ("Coolant Temp", $"{AppState.Settings.Temperature(AppState.Telemetry.CoolantTemp):0}", AppState.Settings.TempUnit,
+                (Loc.Pid("coolant", "Coolant Temp"), $"{AppState.Settings.Temperature(AppState.Telemetry.CoolantTemp):0}", AppState.Settings.TempUnit,
                     AppState.Telemetry.CoolantTemp / 130f, Theme.Orange, "livedata"),
-                ("Fuel Level", $"{AppState.Telemetry.FuelLevel:0}", "%", AppState.Telemetry.FuelLevel / 100f, Theme.Violet, "fuel"),
-                ("Trip", $"{AppState.Settings.Distance(AppState.Telemetry.DistanceKm):0.0}", AppState.Settings.DistanceUnit,
+                (Loc.Pid("fuellevel", "Fuel Level"), $"{AppState.Telemetry.FuelLevel:0}", "%", AppState.Telemetry.FuelLevel / 100f, Theme.Violet, "fuel"),
+                (Loc.T("home.trip"), $"{AppState.Settings.Distance(AppState.Telemetry.DistanceKm):0.0}", AppState.Settings.DistanceUnit,
                     Math.Min(1f, AppState.Telemetry.DistanceKm / 200f), Color.FromArgb(0, 176, 185), "trip"),
             };
 

@@ -6,10 +6,10 @@ namespace obd_car_dangerous.Pages
     /// <summary>Fuel economy: rolling average, instant rate and what this trip has used.</summary>
     internal sealed class FuelPage : PageBase
     {
-        private static readonly string[] TabNames = { "Average", "Instant", "Trip" };
+        
         private int tab;
 
-        public override string Title => "Fuel Consumption";
+        public override string Title => Loc.T("fuel.title");
 
         public override bool ShowBack => true;
 
@@ -19,7 +19,7 @@ namespace obd_car_dangerous.Pages
             float top = DrawHeader(g);
 
             var tabsRect = new RectangleF(pad, top + 18, W - pad * 2, 58);
-            DrawTabs(g, tabsRect, TabNames, tab, index =>
+            DrawTabs(g, tabsRect, new[] { Loc.T("fuel.average"), Loc.T("fuel.instant"), Loc.T("fuel.trip") }, tab, index =>
             {
                 tab = index;
                 Invalidate();
@@ -45,9 +45,9 @@ namespace obd_car_dangerous.Pages
 
             (string Label, string Value, string Unit) primary = tab switch
             {
-                0 => ("Average Economy", t.AverageConsumption.ToString("0.0"), AppState.Settings.ConsumptionUnit),
-                1 => ("Instant Economy", t.Speed < 3 ? "--" : t.InstantConsumption.ToString("0.0"), AppState.Settings.ConsumptionUnit),
-                _ => ("Fuel Used (trip)", (t.DistanceKm * t.AverageConsumption / 100f).ToString("0.00"), "L"),
+                0 => (Loc.T("fuel.avgeconomy"), t.AverageConsumption.ToString("0.0"), AppState.Settings.ConsumptionUnit),
+                1 => (Loc.T("fuel.insteconomy"), t.Speed < 3 ? "--" : t.InstantConsumption.ToString("0.0"), AppState.Settings.ConsumptionUnit),
+                _ => (Loc.T("fuel.usedtrip"), (t.DistanceKm * t.AverageConsumption / 100f).ToString("0.00"), "L"),
             };
 
             Draw.Card(g, left, 18f);
@@ -65,7 +65,7 @@ namespace obd_car_dangerous.Pages
             Color levelColor = t.FuelLevel < 15 ? Theme.Critical : t.FuelLevel < 30 ? Theme.Warn : Theme.Good;
             Icons.Draw(g, "fuel", levelIcon, levelColor, Theme.Card);
 
-            Draw.Text(g, "Fuel Level", Draw.Font(21), Theme.TextSoft, levelIcon.Right + 24, right.Y + 26);
+            Draw.Text(g, Loc.T("fuel.level"), Draw.Font(21), Theme.TextSoft, levelIcon.Right + 24, right.Y + 26);
             Draw.Text(g, $"{t.FuelLevel:0}%", Draw.Font(52, FontStyle.Bold), Theme.Text, levelIcon.Right + 24, right.Y + 52);
 
             var bar = new RectangleF(levelIcon.Right + 24, right.Bottom - 46, right.Width - (levelIcon.Right - right.X) - 56, 18);
@@ -73,7 +73,7 @@ namespace obd_car_dangerous.Pages
             Draw.FillRounded(g, levelColor, new RectangleF(bar.X, bar.Y, Math.Max(12f, bar.Width * t.FuelLevel / 100f), bar.Height), 9f);
 
             float range = t.AverageConsumption > 0.5f ? t.FuelLevel / 100f * 50f / t.AverageConsumption * 100f : 0;
-            Draw.TextIn(g, $"Range approx. {AppState.Settings.Distance(range):0} {AppState.Settings.DistanceUnit}",
+            Draw.TextIn(g, Loc.T("fuel.range", AppState.Settings.Distance(range).ToString("0"), AppState.Settings.DistanceUnit),
                 Draw.Font(17), Theme.TextSoft,
                 new RectangleF(right.Right - 300, right.Y + 24, 270, 26), StringAlignment.Far, StringAlignment.Center, false);
         }
@@ -86,7 +86,7 @@ namespace obd_car_dangerous.Pages
             {
                 float[] values = Charts.Downsample(t.HistoryOf("consumption").Recent(60_000 / Telemetry.TickMs), 120);
                 Charts.Line(g, bounds, values, 0, 30, Theme.Accent,
-                    $"Instant economy ({AppState.Settings.ConsumptionUnit})",
+                    Loc.T("fuel.instchart", AppState.Settings.ConsumptionUnit),
                     new[] { "60s", "50s", "40s", "30s", "20s", "10s", "now" });
                 return;
             }
@@ -113,25 +113,25 @@ namespace obd_car_dangerous.Pages
 
             float max = Math.Max(10f, averaged.Length == 0 ? 20f : averaged.Max() * 1.3f);
             Charts.Bars(g, bounds, averaged, labels, max, Theme.Accent,
-                $"Fuel Economy ({AppState.Settings.ConsumptionUnit})", "10 minute buckets");
+                Loc.T("fuel.chart", AppState.Settings.ConsumptionUnit), Loc.T("fuel.buckets"));
         }
 
         private void DrawTripBreakdown(Graphics g, RectangleF bounds)
         {
             Telemetry t = AppState.Telemetry;
-            Draw.Text(g, "This trip", Draw.Font(20, FontStyle.Bold), Theme.Text, bounds.X + 12, bounds.Y + 10);
+            Draw.Text(g, Loc.T("fuel.thistrip"), Draw.Font(20, FontStyle.Bold), Theme.Text, bounds.X + 12, bounds.Y + 10);
 
             float used = t.DistanceKm * t.AverageConsumption / 100f;
             (string Label, string Value)[] rows =
             {
-                ("Distance", $"{AppState.Settings.Distance(t.DistanceKm):0.0} {AppState.Settings.DistanceUnit}"),
-                ("Driving time", TimeSpan.FromSeconds(t.DrivingSeconds).ToString(@"h\:mm")),
-                ("Fuel used", $"{used:0.00} L"),
-                ("Average economy", $"{t.AverageConsumption:0.0} {AppState.Settings.ConsumptionUnit}"),
-                ("Average speed", $"{AppState.Settings.Speed(t.AvgSpeed):0.0} {AppState.Settings.SpeedUnit}"),
-                ("Idle fuel rate", $"{Math.Max(0.6f, t.FuelRate * 0.25f):0.0} L/h"),
+                (Loc.T("fuel.distance"), $"{AppState.Settings.Distance(t.DistanceKm):0.0} {AppState.Settings.DistanceUnit}"),
+                (Loc.T("fuel.drivingtime"), TimeSpan.FromSeconds(t.DrivingSeconds).ToString(@"h\:mm")),
+                (Loc.T("fuel.used"), $"{used:0.00} L"),
+                (Loc.T("fuel.avgeconomy"), $"{t.AverageConsumption:0.0} {AppState.Settings.ConsumptionUnit}"),
+                (Loc.T("fuel.avgspeed"), $"{AppState.Settings.Speed(t.AvgSpeed):0.0} {AppState.Settings.SpeedUnit}"),
+                (Loc.T("fuel.idlerate"), $"{Math.Max(0.6f, t.FuelRate * 0.25f):0.0} L/h"),
                 ("CO₂ estimate", $"{used * 2.31f:0.0} kg"),
-                ("Cost at 1.75/L", $"{used * 1.75f:0.00}"),
+                (Loc.T("fuel.cost"), $"{used * 1.75f:0.00}"),
             };
 
             float columnW = bounds.Width / 2f;

@@ -6,6 +6,7 @@ namespace obd_car_dangerous
     {
         private readonly System.Windows.Forms.Timer progressTimer;
         private float progress = 0.12f;
+        private float blink;
         private string status = "Starting...";
 
         public Form1()
@@ -16,12 +17,13 @@ namespace obd_car_dangerous
             progressTimer.Tick += (_, _) =>
             {
                 progress += 0.014f;
+                blink += 0.17f;
                 status = progress switch
                 {
-                    < 0.35f => "Starting...",
-                    < 0.6f => "Connecting to OBD2 adapter...",
-                    < 0.85f => "Reading ECU information...",
-                    _ => "Ready",
+                    < 0.35f => Services.Loc.T("splash.starting"),
+                    < 0.6f => Services.Loc.T("splash.connecting"),
+                    < 0.85f => Services.Loc.T("splash.reading"),
+                    _ => Services.Loc.T("splash.ready"),
                 };
 
                 if (progress >= 1f)
@@ -35,6 +37,16 @@ namespace obd_car_dangerous
                 Invalidate();
             };
             progressTimer.Start();
+        }
+
+        /// <summary>Freezes the splash at a given progress and blink phase, used by the offscreen renderer.</summary>
+        internal void PreviewFrame(float progressValue, float blinkPhase)
+        {
+            progressTimer.Stop();
+            progress = progressValue;
+            blink = blinkPhase;
+            status = Services.Loc.T("splash.connecting");
+            Invalidate();
         }
 
         /// <summary>Any key or click skips the splash.</summary>
@@ -132,26 +144,40 @@ namespace obd_car_dangerous
             graphics.DrawLine(roof, x + width / 2, y - 22, x + width / 2, y);
         }
 
-        private static void DrawBrand(Graphics graphics)
+        private void DrawBrand(Graphics graphics)
         {
+            // 0 = dim, 1 = bright. Drives the blinking warning sign.
+            float pulse = 0.5f + (float)Math.Sin(blink) * 0.5f;
+
             using var carBlue = new SolidBrush(Color.FromArgb(0, 91, 191));
             using var white = new SolidBrush(Color.White);
             using var red = new SolidBrush(Color.FromArgb(244, 29, 55));
-            using var titleFont = new Font("Segoe UI", 76, FontStyle.Bold);
-            using var subtitleFont = new Font("Segoe UI", 38, FontStyle.Bold);
-            using var taglineFont = new Font("Segoe UI", 27, FontStyle.Bold);
+            using var redBright = new SolidBrush(Color.FromArgb(
+                (int)(214 + 41 * pulse), (int)(22 + 60 * pulse), (int)(44 + 36 * pulse)));
+            string family = Services.Loc.FontFamily;
+            using var titleFont = new Font(family, 76, FontStyle.Bold);
+            using var subtitleFont = new Font(family, 38, FontStyle.Bold);
+            using var taglineFont = new Font(family, 27, FontStyle.Bold);
 
             FillRoundedRectangle(graphics, carBlue, new Rectangle(520, 95, 160, 105), 20);
             graphics.FillPolygon(white, new[] { new Point(545, 95), new Point(570, 65), new Point(630, 65), new Point(655, 95) });
             graphics.FillRectangle(white, 550, 163, 100, 14);
+
+            // Halo behind the warning sign, breathing in and out.
+            using (var halo = new SolidBrush(Color.FromArgb((int)(30 + 90 * pulse), 244, 29, 55)))
+            {
+                float grow = 26f * pulse;
+                graphics.FillEllipse(halo, 660 - grow, 60 - grow, 150 + grow * 2, 150 + grow * 2);
+            }
+
             graphics.FillEllipse(red, 672, 100, 95, 120);
-            graphics.FillPolygon(red, new[] { new Point(719, 68), new Point(780, 185), new Point(659, 185) });
+            graphics.FillPolygon(redBright, new[] { new Point(719, 68), new Point(780, 185), new Point(659, 185) });
             using var exclamationFont = new Font("Segoe UI", 65, FontStyle.Bold);
             graphics.DrawString("!", exclamationFont, white, 704, 86);
 
             DrawCenteredString(graphics, "OBD2", titleFont, Color.FromArgb(5, 43, 98), 220);
-            DrawCenteredString(graphics, "Car Dangerous System", subtitleFont, Color.FromArgb(5, 43, 98), 325);
-            DrawCenteredString(graphics, "Monitor  ·  Detect  ·  Protect", taglineFont, Color.FromArgb(8, 66, 135), 400);
+            DrawCenteredString(graphics, Services.Loc.T("app.title").Replace("OBD2", string.Empty).Trim(), subtitleFont, Color.FromArgb(5, 43, 98), 325);
+            DrawCenteredString(graphics, Services.Loc.T("app.tagline"), taglineFont, Color.FromArgb(8, 66, 135), 400);
         }
 
         private static void DrawCar(Graphics graphics)
@@ -183,14 +209,33 @@ namespace obd_car_dangerous
 
         private void DrawProgress(Graphics graphics)
         {
+            float pulse = 0.5f + (float)Math.Sin(blink) * 0.5f;
+
             using var track = new SolidBrush(Color.FromArgb(45, 111, 173));
             using var fill = new SolidBrush(Color.FromArgb(0, 174, 243));
-            using var statusFont = new Font("Segoe UI", 28, FontStyle.Bold);
+            using var statusFont = new Font(Services.Loc.FontFamily, 28, FontStyle.Bold);
 
+            int barWidth = Math.Max(20, (int)(540 * progress));
             FillRoundedRectangle(graphics, track, new Rectangle(370, 675, 540, 20), 10);
-            FillRoundedRectangle(graphics, fill, new Rectangle(370, 675, Math.Max(20, (int)(540 * progress)), 20), 10);
+            FillRoundedRectangle(graphics, fill, new Rectangle(370, 675, barWidth, 20), 10);
+
+            // Glowing head on the progress bar.
+            using (var head = new SolidBrush(Color.FromArgb((int)(90 + 140 * pulse), 210, 245, 255)))
+            {
+                graphics.FillEllipse(head, 370 + barWidth - 18, 669, 32, 32);
+            }
+
             FillRoundedRectangle(graphics, track, new Rectangle(365, 708, 550, 72), 35);
-            DrawCenteredString(graphics, status, statusFont, Color.White, 720);
+            DrawCenteredString(graphics, status, statusFont,
+                Color.FromArgb((int)(150 + 105 * pulse), 255, 255, 255), 720);
+
+            // Three dots that light up in turn.
+            for (int i = 0; i < 3; i++)
+            {
+                bool lit = (int)(blink * 1.6f) % 3 == i;
+                using var dot = new SolidBrush(Color.FromArgb(lit ? 235 : 70, 255, 255, 255));
+                graphics.FillEllipse(dot, 604 + i * 36, 640, 16, 16);
+            }
         }
 
         private static void FillRoundedRectangle(Graphics graphics, Brush brush, Rectangle bounds, int radius)

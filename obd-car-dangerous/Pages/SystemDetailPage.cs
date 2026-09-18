@@ -8,7 +8,7 @@ namespace obd_car_dangerous.Pages
     {
         private string systemName = "Engine";
 
-        public override string Title => $"{systemName} System";
+        public override string Title => Loc.T("sysdetail.title", Loc.SystemName(systemName));
 
         public override bool ShowBack => true;
 
@@ -52,12 +52,12 @@ namespace obd_car_dangerous.Pages
             Draw.FillRounded(g, color, iconBox, 20f);
             Icons.Draw(g, health.Icon, RectangleF.Inflate(iconBox, -22, -22), Color.White, color);
 
-            Draw.Text(g, health.Name, Draw.Font(34, FontStyle.Bold), Theme.Text, iconBox.Right + 24, hero.Y + 30);
+            Draw.Text(g, Loc.SystemName(health.Name), Draw.Font(34, FontStyle.Bold), Theme.Text, iconBox.Right + 24, hero.Y + 30);
             Draw.Text(g, health.Detail, Draw.Font(20), Theme.TextSoft, iconBox.Right + 24, hero.Y + 78);
 
             var pill = new RectangleF(hero.Right - 210, hero.Y + 34, 160, 46);
-            Draw.Pill(g, pill, Draw.Alpha(color, 42), health.Status, Draw.Font(22, FontStyle.Bold), color);
-            Draw.TextIn(g, $"Module score {health.Score}/100", Draw.Font(17), Theme.TextSoft,
+            Draw.Pill(g, pill, Draw.Alpha(color, 42), Loc.StatusWord(health.Status), Draw.Font(22, FontStyle.Bold), color);
+            Draw.TextIn(g, Loc.T("sysdetail.score", health.Score), Draw.Font(17), Theme.TextSoft,
                 new RectangleF(hero.Right - 300, pill.Bottom + 6, 250, 28), StringAlignment.Far, StringAlignment.Center, false);
 
             float contentTop = hero.Bottom + 18;
@@ -71,7 +71,7 @@ namespace obd_car_dangerous.Pages
         private void DrawCodes(Graphics g, RectangleF bounds)
         {
             Draw.Card(g, bounds, 18f);
-            Draw.Text(g, "Fault codes", Draw.Font(22, FontStyle.Bold), Theme.Text, bounds.X + 20, bounds.Y + 16);
+            Draw.Text(g, Loc.T("sysdetail.codes"), Draw.Font(22, FontStyle.Bold), Theme.Text, bounds.X + 20, bounds.Y + 16);
 
             List<DtcRecord> codes = AppState.Dtc.All
                 .Where(c => c.System == DtcSystem(systemName))
@@ -81,7 +81,7 @@ namespace obd_car_dangerous.Pages
 
             if (codes.Count == 0)
             {
-                Draw.TextCentered(g, "No codes stored for this module.", Draw.Font(20), Theme.TextSoft,
+                Draw.TextCentered(g, Loc.T("sysdetail.nocodes"), Draw.Font(20), Theme.TextSoft,
                     new RectangleF(bounds.X, bounds.Y + 60, bounds.Width, bounds.Height - 80));
                 return;
             }
@@ -106,7 +106,7 @@ namespace obd_car_dangerous.Pages
                     new RectangleF(row.X + 28, row.Y, 110, row.Height), StringAlignment.Near, StringAlignment.Center, false);
                 Draw.TextIn(g, code.Description, Draw.Font(18), Theme.TextSoft,
                     new RectangleF(row.X + 140, row.Y + 8, row.Width - 240, row.Height - 16), StringAlignment.Near, StringAlignment.Center);
-                Draw.TextIn(g, code.Status.ToString(), Draw.Font(16, FontStyle.Bold), statusColor,
+                Draw.TextIn(g, Loc.Status(code.Status), Draw.Font(16, FontStyle.Bold), statusColor,
                     new RectangleF(row.Right - 110, row.Y, 90, row.Height), StringAlignment.Far, StringAlignment.Center, false);
 
                 Hit(row, () => Shell.Navigate("dtcdetail", code), id);
@@ -117,7 +117,7 @@ namespace obd_car_dangerous.Pages
         private void DrawReadings(Graphics g, RectangleF bounds)
         {
             Draw.Card(g, bounds, 18f);
-            Draw.Text(g, "Live readings", Draw.Font(22, FontStyle.Bold), Theme.Text, bounds.X + 20, bounds.Y + 16);
+            Draw.Text(g, Loc.T("sysdetail.readings"), Draw.Font(22, FontStyle.Bold), Theme.Text, bounds.X + 20, bounds.Y + 16);
 
             string[] keys = PidsFor(systemName);
             float y = bounds.Y + 58;
@@ -131,7 +131,7 @@ namespace obd_car_dangerous.Pages
                 var row = new RectangleF(bounds.X + 20, y, bounds.Width - 40, rowH);
                 string id = $"sysread-{key}";
 
-                Draw.TextIn(g, pid.Label, Draw.Font(19), Theme.TextSoft,
+                Draw.TextIn(g, Loc.Pid(pid.Key, pid.Label), Draw.Font(19), Theme.TextSoft,
                     new RectangleF(row.X, row.Y, row.Width * 0.5f, rowH * 0.55f), StringAlignment.Near, StringAlignment.Center, false);
                 Draw.TextIn(g, $"{value.ToString(pid.Format)} {pid.Unit}", Draw.Font(21, FontStyle.Bold), Theme.Text,
                     new RectangleF(row.X + row.Width * 0.5f, row.Y, row.Width * 0.5f, rowH * 0.55f), StringAlignment.Far, StringAlignment.Center, false);

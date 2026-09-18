@@ -3,7 +3,7 @@ using obd_car_dangerous.Services;
 
 namespace obd_car_dangerous.Ui
 {
-    internal sealed record NavItem(string Key, string Label, string Icon);
+    internal sealed record NavItem(string Key, string LabelKey, string Icon);
 
     /// <summary>Left navigation rail. Collapses to icons when the window gets narrow.</summary>
     internal sealed class Sidebar : PageBase
@@ -13,14 +13,15 @@ namespace obd_car_dangerous.Ui
 
         public static readonly NavItem[] Items =
         {
-            new("home", "Home", "home"),
-            new("diagnostics", "Diagnostics", "diagnostics"),
-            new("livedata", "Live Data", "chart"),
-            new("dtc", "DTC Codes", "alert"),
-            new("fuel", "Fuel", "fuel"),
-            new("trip", "Trip Info", "pin"),
-            new("alarms", "Alarm History", "history"),
-            new("settings", "Settings", "settings"),
+            new("home", "nav.home", "home"),
+            new("diagnostics", "nav.diagnostics", "diagnostics"),
+            new("livedata", "nav.livedata", "chart"),
+            new("dtc", "nav.dtc", "alert"),
+            new("dictionary", "nav.dictionary", "book"),
+            new("fuel", "nav.fuel", "fuel"),
+            new("trip", "nav.trip", "pin"),
+            new("alarms", "nav.alarms", "history"),
+            new("settings", "nav.settings", "settings"),
         };
 
         public string Selected { get; set; } = "home";
@@ -49,13 +50,13 @@ namespace obd_car_dangerous.Ui
 
             if (!compact)
             {
-                Draw.TextIn(g, "MENU", Draw.Font(19, FontStyle.Bold), Draw.Alpha(Color.White, 150),
+                Draw.TextIn(g, Services.Loc.T("nav.menu"), Draw.Font(19, FontStyle.Bold), Draw.Alpha(Color.White, 150),
                     new RectangleF(pad + 58, 22, W - pad - 70, 46), StringAlignment.Near, StringAlignment.Center, false);
             }
 
             float y = 96;
-            float itemH = 62;
-            float gap = 8;
+            float itemH = 56;
+            float gap = 6;
 
             foreach (NavItem item in Items)
             {
@@ -73,12 +74,12 @@ namespace obd_car_dangerous.Ui
                 }
 
                 Color knockout = active ? Theme.Accent : Theme.ShellTop;
-                var iconBox = new RectangleF(rect.X + (compact ? (rect.Width - 30) / 2f : 18), rect.Y + 16, 30, 30);
+                var iconBox = new RectangleF(rect.X + (compact ? (rect.Width - 30) / 2f : 18), rect.Y + 13, 30, 30);
                 Icons.Draw(g, item.Icon, iconBox, active ? Color.White : Theme.ShellText, knockout);
 
                 if (!compact)
                 {
-                    Draw.TextIn(g, item.Label, Draw.Font(21, active ? FontStyle.Bold : FontStyle.Regular),
+                    Draw.TextIn(g, Services.Loc.T(item.LabelKey), Draw.Font(21, active ? FontStyle.Bold : FontStyle.Regular),
                         active ? Color.White : Theme.ShellText,
                         new RectangleF(rect.X + 62, rect.Y, rect.Width - 72, rect.Height),
                         StringAlignment.Near, StringAlignment.Center, false);
@@ -90,8 +91,8 @@ namespace obd_car_dangerous.Ui
                     if (count > 0)
                     {
                         var badge = compact
-                            ? new RectangleF(rect.Right - 30, rect.Y + 8, 24, 24)
-                            : new RectangleF(rect.Right - 44, rect.Y + 19, 30, 24);
+                            ? new RectangleF(rect.Right - 28, rect.Y + 6, 24, 24)
+                            : new RectangleF(rect.Right - 44, rect.Y + 16, 30, 24);
                         Draw.Pill(g, badge, Theme.Critical, count.ToString(), Draw.Font(16, FontStyle.Bold), Color.White);
                     }
                 }
@@ -125,7 +126,7 @@ namespace obd_car_dangerous.Ui
             Draw.Text(g, AppState.Connection.StatusText, Draw.Font(19, FontStyle.Bold), Color.White, box.X + 40, box.Y + 14);
             Draw.Text(g, $"{AppState.Connection.Current.Name} · {AppState.Connection.Current.Transport}",
                 Draw.Font(16), Draw.Alpha(Color.White, 170), box.X + 18, box.Y + 44);
-            Draw.Text(g, $"Health {AppState.HealthScore}/100 · {AppState.HealthLabel}",
+            Draw.Text(g, Loc.T("common.healthline", AppState.HealthScore, AppState.HealthLabel),
                 Draw.Font(16), Draw.Alpha(Color.White, 170), box.X + 18, box.Y + 66);
         }
     }

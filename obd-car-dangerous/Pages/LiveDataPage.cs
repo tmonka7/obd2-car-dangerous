@@ -9,7 +9,7 @@ namespace obd_car_dangerous.Pages
         private int tab;
         private string selectedPid = "rpm";
 
-        public override string Title => "Live Data";
+        public override string Title => Loc.T("live.title");
 
         public override bool ShowBack => true;
 
@@ -32,10 +32,10 @@ namespace obd_car_dangerous.Pages
         protected override void Render(Graphics g)
         {
             const float pad = 24f;
-            float top = DrawHeader(g, AppState.Connection.IsConnected ? "streaming" : "adapter offline");
+            float top = DrawHeader(g, Loc.T(AppState.Connection.IsConnected ? "live.streaming" : "live.offline"));
 
             var tabsRect = new RectangleF(pad, top + 18, W - pad * 2, 58);
-            DrawTabs(g, tabsRect, Telemetry.Groups, tab, index =>
+            DrawTabs(g, tabsRect, Telemetry.Groups.Select(group => Loc.T("group." + group)).ToList(), tab, index =>
             {
                 tab = index;
                 selectedPid = PidsForTab().First().Key;
@@ -79,7 +79,7 @@ namespace obd_car_dangerous.Pages
                     Draw.StrokeRounded(g, Theme.Accent, rect, 18f, 2.5f);
                 }
 
-                Draw.TextIn(g, pid.Label, Draw.Font(20, FontStyle.Bold), Theme.TextSoft,
+                Draw.TextIn(g, Loc.Pid(pid.Key, pid.Label), Draw.Font(20, FontStyle.Bold), Theme.TextSoft,
                     new RectangleF(rect.X + 18, rect.Y + 12, rect.Width - 36, 28), StringAlignment.Near, StringAlignment.Center, false);
 
                 float value = pid.Read(AppState.Telemetry);
@@ -191,10 +191,10 @@ namespace obd_car_dangerous.Pages
             }
 
             Charts.Line(g, RectangleF.Inflate(bounds, -10, -10), values, min, max, Theme.Accent,
-                $"{pid.Label} ({pid.Unit})", new[] { "0s", "10s", "20s", "30s", "40s", "50s", "60s" });
+                $"{Loc.Pid(pid.Key, pid.Label)} ({pid.Unit})", new[] { "0s", "10s", "20s", "30s", "40s", "50s", "60s" });
 
             var expand = new RectangleF(bounds.Right - 190, bounds.Y + 14, 170, 40);
-            DrawGhostButton(g, expand, "Full graph", Theme.Accent, () => Shell.Navigate("graph", selectedPid), "live-expand", 12f);
+            DrawGhostButton(g, expand, Loc.T("live.fullgraph"), Theme.Accent, () => Shell.Navigate("graph", selectedPid), "live-expand", 12f);
         }
     }
 }

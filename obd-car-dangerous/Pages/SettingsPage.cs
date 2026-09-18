@@ -7,23 +7,22 @@ namespace obd_car_dangerous.Pages
     /// <summary>Settings hub: general, connection, alerts, units, vehicle info and about.</summary>
     internal sealed class SettingsPage : PageBase
     {
-        private static readonly (string Key, string Label, string Icon)[] Sections =
+        private static readonly (string Key, string LabelKey, string Icon)[] Sections =
         {
-            ("general", "General", "settings"),
-            ("connection", "OBD2 Connection", "bluetooth"),
-            ("alerts", "Alerts & Notifications", "bell"),
-            ("units", "Units", "ruler"),
-            ("vehicle", "Vehicle Info", "car"),
-            ("about", "About", "info"),
+            ("general", "set.general", "settings"),
+            ("connection", "set.connection", "bluetooth"),
+            ("alerts", "set.alerts", "bell"),
+            ("units", "set.units", "ruler"),
+            ("vehicle", "set.vehicle", "car"),
+            ("about", "set.about", "info"),
         };
 
-        private static readonly string[] Languages = { "English", "한국어", "日本語", "Deutsch", "Español" };
         private static readonly int[] Timeouts = { 1, 5, 10, 30, 0 };
 
         private int section;
         private float rowY;
 
-        public override string Title => "Settings";
+        public override string Title => Loc.T("set.title");
 
         public override bool ShowBack => true;
 
@@ -85,7 +84,7 @@ namespace obd_car_dangerous.Pages
             Draw.GradientRounded(g, Theme.ShellTop, Theme.ShellBottom, bounds, 20f);
 
             float y = bounds.Y + 18;
-            foreach ((string key, string label, string icon) in Sections)
+            foreach ((string key, string labelKey, string icon) in Sections)
             {
                 var row = new RectangleF(bounds.X + 12, y, bounds.Width - 24, 62);
                 bool active = key == Sections[section].Key;
@@ -102,7 +101,7 @@ namespace obd_car_dangerous.Pages
 
                 Color knockout = active ? Theme.Accent : Theme.ShellTop;
                 Icons.Draw(g, icon, new RectangleF(row.X + 16, row.Y + 17, 28, 28), active ? Color.White : Theme.ShellText, knockout);
-                Draw.TextIn(g, label, Draw.Font(20, active ? FontStyle.Bold : FontStyle.Regular),
+                Draw.TextIn(g, Loc.T(labelKey), Draw.Font(20, active ? FontStyle.Bold : FontStyle.Regular),
                     active ? Color.White : Theme.ShellText,
                     new RectangleF(row.X + 56, row.Y, row.Width - 66, row.Height), StringAlignment.Near, StringAlignment.Center, false);
 
@@ -200,37 +199,37 @@ namespace obd_car_dangerous.Pages
         private void DrawGeneral(Graphics g, RectangleF bounds)
         {
             AppSettings s = AppState.Settings;
-            SectionTitle(g, bounds, "General Settings");
+            SectionTitle(g, bounds, Loc.T("set.general.title"));
 
-            ToggleRow(g, bounds, "Auto Connect", "Link to the last adapter when the app starts", s.AutoConnect,
+            ToggleRow(g, bounds, Loc.T("set.autoconnect"), Loc.T("set.autoconnect.hint"), s.AutoConnect,
                 value => s.Update(x => x.AutoConnect = value), "set-auto");
 
-            ToggleRow(g, bounds, "Alert Sound", "Play a sound when a danger alert appears", s.AlertSound,
+            ToggleRow(g, bounds, Loc.T("set.alertsound"), Loc.T("set.alertsound.hint"), s.AlertSound,
                 value => s.Update(x => x.AlertSound = value), "set-sound");
 
-            ToggleRow(g, bounds, "Dark Mode", "Easier on the eyes at night", s.DarkMode,
+            ToggleRow(g, bounds, Loc.T("set.darkmode"), Loc.T("set.darkmode.hint"), s.DarkMode,
                 value => s.Update(x => x.DarkMode = value), "set-dark");
 
-            ToggleRow(g, bounds, "Keep Screen On", "Stop Windows blanking the display while driving", s.KeepScreenOn,
+            ToggleRow(g, bounds, Loc.T("set.keepscreen"), Loc.T("set.keepscreen.hint"), s.KeepScreenOn,
                 value => s.Update(x => x.KeepScreenOn = value), "set-keep");
 
-            ValueRow(g, bounds, "Language", s.Language, () => s.Update(x =>
+            ValueRow(g, bounds, Loc.T("set.language"), s.Language, () => s.Update(x =>
             {
-                int index = Array.IndexOf(Languages, x.Language);
-                x.Language = Languages[(index + 1) % Languages.Length];
+                int index = Array.IndexOf(Loc.Languages, x.Language);
+                x.Language = Loc.Languages[(index + 1) % Loc.Languages.Length];
             }), "set-lang");
 
-            ValueRow(g, bounds, "Screen Timeout", s.ScreenTimeoutMinutes == 0 ? "Never" : $"{s.ScreenTimeoutMinutes} min", () => s.Update(x =>
+            ValueRow(g, bounds, Loc.T("set.timeout"), s.ScreenTimeoutMinutes == 0 ? Loc.T("set.timeout.never") : Loc.T("set.timeout.minutes", s.ScreenTimeoutMinutes), () => s.Update(x =>
             {
                 int index = Array.IndexOf(Timeouts, x.ScreenTimeoutMinutes);
                 x.ScreenTimeoutMinutes = Timeouts[(index + 1) % Timeouts.Length];
             }), "set-timeout");
 
             var full = new RectangleF(bounds.X, rowY + 10, 280, 56);
-            DrawGhostButton(g, full, Shell is MainForm { IsFullScreen: true } ? "Leave full screen" : "Enter full screen",
+            DrawGhostButton(g, full, Loc.T(Shell is MainForm { IsFullScreen: true } ? "set.fullscreen.leave" : "set.fullscreen.enter"),
                 Theme.Accent, () => (Shell as MainForm)?.ToggleFullScreen(), "set-full", 13f);
 
-            Draw.TextIn(g, "F11 full screen · Esc leaves it · Ctrl+D theme",
+            Draw.TextIn(g, Loc.T("set.shortcuts"),
                 Draw.Font(17), Theme.TextSoft,
                 new RectangleF(full.Right + 20, full.Y, bounds.Width - full.Width - 20, 56), StringAlignment.Near, StringAlignment.Center, false);
         }
@@ -238,7 +237,7 @@ namespace obd_car_dangerous.Pages
         private void DrawConnection(Graphics g, RectangleF bounds)
         {
             ConnectionService link = AppState.Connection;
-            SectionTitle(g, bounds, "OBD2 Connection");
+            SectionTitle(g, bounds, Loc.T("set.connection"));
 
             var hero = new RectangleF(bounds.X, rowY, bounds.Width, 250);
             Draw.FillRounded(g, Draw.Alpha(Theme.CardAlt, Theme.Dark ? 255 : 150), hero, 18f);
@@ -265,7 +264,7 @@ namespace obd_car_dangerous.Pages
                 new RectangleF(hero.X, circle.Bottom + 10, hero.Width, 44));
             Draw.TextCentered(g, $"{link.Current.Name} ({link.Current.Transport})", Draw.Font(21), Theme.TextSoft,
                 new RectangleF(hero.X, circle.Bottom + 54, hero.Width, 30));
-            Draw.TextCentered(g, connected ? $"Protocol: {link.Protocol}" : "No adapter link", Draw.Font(21), Theme.TextSoft,
+            Draw.TextCentered(g, connected ? Loc.T("conn.protocol", link.Protocol) : Loc.T("conn.nolink"), Draw.Font(21), Theme.TextSoft,
                 new RectangleF(hero.X, circle.Bottom + 84, hero.Width, 30));
 
             rowY = hero.Bottom + 16;
@@ -274,21 +273,21 @@ namespace obd_car_dangerous.Pages
             float half = (buttons.Width - 16) / 2f;
             if (connected)
             {
-                DrawGhostButton(g, new RectangleF(buttons.X, buttons.Y, half, buttons.Height), "Disconnect", Theme.Critical,
+                DrawGhostButton(g, new RectangleF(buttons.X, buttons.Y, half, buttons.Height), Loc.T("conn.disconnect"), Theme.Critical,
                     () => link.Disconnect(), "conn-disconnect");
             }
             else
             {
-                DrawGhostButton(g, new RectangleF(buttons.X, buttons.Y, half, buttons.Height), "Connect", Theme.Good,
+                DrawGhostButton(g, new RectangleF(buttons.X, buttons.Y, half, buttons.Height), Loc.T("conn.connect"), Theme.Good,
                     () => link.Connect(), "conn-connect");
             }
 
             DrawButton(g, new RectangleF(buttons.X + half + 16, buttons.Y, half, buttons.Height),
-                link.Scanning ? "Scanning..." : "Scan", Theme.Accent, Color.White, () => link.Scan(), "conn-scan");
+                link.Scanning ? Loc.T("conn.scanning") : Loc.T("conn.scan"), Theme.Accent, Color.White, () => link.Scan(), "conn-scan");
 
             rowY = buttons.Bottom + 18;
 
-            Draw.Text(g, "Available adapters", Draw.Font(20, FontStyle.Bold), Theme.TextSoft, bounds.X, rowY);
+            Draw.Text(g, Loc.T("conn.available"), Draw.Font(20, FontStyle.Bold), Theme.TextSoft, bounds.X, rowY);
             rowY += 34;
 
             foreach (Adapter adapter in link.Found)
@@ -310,7 +309,7 @@ namespace obd_car_dangerous.Pages
                     new RectangleF(row.X + 58, row.Y, 260, row.Height), StringAlignment.Near, StringAlignment.Center, false);
                 Draw.TextIn(g, adapter.Address, Draw.Font(17), Theme.TextSoft,
                     new RectangleF(row.X + 320, row.Y, row.Width - 460, row.Height), StringAlignment.Near, StringAlignment.Center, false);
-                Draw.TextIn(g, current && connected ? "Connected" : "Tap to connect", Draw.Font(17, FontStyle.Bold),
+                Draw.TextIn(g, current && connected ? Loc.T("state.connected") : Loc.T("conn.tap"), Draw.Font(17, FontStyle.Bold),
                     current && connected ? Theme.Good : Theme.Accent,
                     new RectangleF(row.Right - 200, row.Y, 184, row.Height), StringAlignment.Far, StringAlignment.Center, false);
 
@@ -320,7 +319,7 @@ namespace obd_car_dangerous.Pages
 
             if (connected)
             {
-                Draw.TextIn(g, $"Signal {link.SignalStrength}%  ·  {link.Firmware}", Draw.Font(17), Theme.TextSoft,
+                Draw.TextIn(g, Loc.T("conn.signal", link.SignalStrength, link.Firmware), Draw.Font(17), Theme.TextSoft,
                     new RectangleF(bounds.X, bounds.Bottom - 30, bounds.Width, 28), StringAlignment.Near, StringAlignment.Center, false);
             }
         }
@@ -328,70 +327,69 @@ namespace obd_car_dangerous.Pages
         private void DrawAlerts(Graphics g, RectangleF bounds)
         {
             AppSettings s = AppState.Settings;
-            SectionTitle(g, bounds, "Alerts & Notifications");
+            SectionTitle(g, bounds, Loc.T("alerts.title"));
 
-            ToggleRow(g, bounds, "Danger Alert Screen", "Show the full screen warning when a serious fault appears",
+            ToggleRow(g, bounds, Loc.T("alert.popup"), Loc.T("alert.popup.hint"),
                 s.DangerPopup, value => s.Update(x => x.DangerPopup = value), "alert-popup");
 
-            ToggleRow(g, bounds, "New Fault Codes", "Watch the ECU for codes while driving",
+            ToggleRow(g, bounds, Loc.T("alert.newdtc"), Loc.T("alert.newdtc.hint"),
                 s.NotifyNewDtc, value => s.Update(x => x.NotifyNewDtc = value), "alert-dtc");
 
-            ToggleRow(g, bounds, "Overheat Warning", "Warn when the coolant passes the limit below",
+            ToggleRow(g, bounds, Loc.T("alert.overheat"), Loc.T("alert.overheat.hint"),
                 s.NotifyOverheat, value => s.Update(x => x.NotifyOverheat = value), "alert-heat");
 
-            ToggleRow(g, bounds, "Over Speed Warning", "Warn when the vehicle passes the speed limit below",
+            ToggleRow(g, bounds, Loc.T("alert.overspeed"), Loc.T("alert.overspeed.hint"),
                 s.NotifyOverSpeed, value => s.Update(x => x.NotifyOverSpeed = value), "alert-speed");
 
-            StepperRow(g, bounds, "Speed limit", $"{s.SpeedLimit} km/h",
+            StepperRow(g, bounds, Loc.T("alert.speedlimit"), $"{s.SpeedLimit} km/h",
                 () => s.Update(x => x.SpeedLimit = Math.Max(40, x.SpeedLimit - 10)),
                 () => s.Update(x => x.SpeedLimit = Math.Min(240, x.SpeedLimit + 10)), "alert-speedlimit");
 
-            StepperRow(g, bounds, "Coolant limit", $"{s.CoolantLimit} °C",
+            StepperRow(g, bounds, Loc.T("alert.coolantlimit"), $"{s.CoolantLimit} °C",
                 () => s.Update(x => x.CoolantLimit = Math.Max(90, x.CoolantLimit - 5)),
                 () => s.Update(x => x.CoolantLimit = Math.Min(130, x.CoolantLimit + 5)), "alert-coolant");
 
-            StepperRow(g, bounds, "RPM limit", $"{s.RpmLimit} rpm",
+            StepperRow(g, bounds, Loc.T("alert.rpmlimit"), $"{s.RpmLimit} rpm",
                 () => s.Update(x => x.RpmLimit = Math.Max(3000, x.RpmLimit - 250)),
                 () => s.Update(x => x.RpmLimit = Math.Min(7500, x.RpmLimit + 250)), "alert-rpm");
 
             var test = new RectangleF(bounds.X, rowY + 8, 300, 56);
-            DrawGhostButton(g, test, "Test danger alert", Theme.Critical, () =>
-                (Shell as MainForm)?.ShowDanger("Danger Alert!", "TEST",
-                    "This is a test of the danger alert screen. Real alerts show the fault code and what it means.", null),
+            DrawGhostButton(g, test, Loc.T("alert.test"), Theme.Critical, () =>
+                (Shell as MainForm)?.ShowDanger("TEST", Loc.T("alert.test.body"), null),
                 "alert-test", 13f);
         }
 
         private void DrawUnits(Graphics g, RectangleF bounds)
         {
             AppSettings s = AppState.Settings;
-            SectionTitle(g, bounds, "Units");
+            SectionTitle(g, bounds, Loc.T("set.units"));
 
-            ValueRow(g, bounds, "Measurement system", s.Metric ? "Metric (km, L)" : "Imperial (mi, gal)",
+            ValueRow(g, bounds, Loc.T("units.system"), Loc.T(s.Metric ? "units.metric" : "units.imperial"),
                 () => s.Update(x => x.Metric = !x.Metric), "unit-system");
 
-            ValueRow(g, bounds, "Temperature", s.TemperatureUnit,
+            ValueRow(g, bounds, Loc.T("units.temperature"), Loc.T(s.TemperatureUnit == "Celsius" ? "units.celsius" : "units.fahrenheit"),
                 () => s.Update(x => x.TemperatureUnit = x.TemperatureUnit == "Celsius" ? "Fahrenheit" : "Celsius"), "unit-temp");
 
-            ValueRow(g, bounds, "Pressure", s.PressureUnit, () => s.Update(x =>
+            ValueRow(g, bounds, Loc.T("units.pressure"), s.PressureUnit, () => s.Update(x =>
             {
                 string[] options = { "kPa", "bar", "psi" };
                 x.PressureUnit = options[(Array.IndexOf(options, x.PressureUnit) + 1) % options.Length];
             }), "unit-pressure");
 
-            ValueRow(g, bounds, "Consumption", s.ConsumptionUnit, () => s.Update(x =>
+            ValueRow(g, bounds, Loc.T("units.consumption"), s.ConsumptionUnit, () => s.Update(x =>
             {
                 string[] options = { "L/100km", "km/L", "MPG" };
                 x.ConsumptionUnit = options[(Array.IndexOf(options, x.ConsumptionUnit) + 1) % options.Length];
             }), "unit-consumption");
 
-            Draw.TextIn(g, "Speed, distance and temperature update across every screen as soon as you change these.",
+            Draw.TextIn(g, Loc.T("units.note"),
                 Draw.Font(18), Theme.TextSoft, new RectangleF(bounds.X, rowY + 14, bounds.Width, 60));
 
             var reset = new RectangleF(bounds.X, rowY + 80, 300, 56);
-            DrawGhostButton(g, reset, "Reset to defaults", Theme.TextSoft, () => OpenModal(
-                "Reset all settings?",
-                "Every preference returns to its default value. Fault codes and trip data are not affected.",
-                "Reset", Theme.Critical, () =>
+            DrawGhostButton(g, reset, Loc.T("units.reset"), Theme.TextSoft, () => OpenModal(
+                Loc.T("units.reset.title"),
+                Loc.T("units.reset.body"),
+                Loc.T("units.reset.ok"), Theme.Critical, () =>
                 {
                     var defaults = new AppSettings();
                     s.Update(x =>
@@ -419,7 +417,7 @@ namespace obd_car_dangerous.Pages
 
         private void DrawVehicle(Graphics g, RectangleF bounds)
         {
-            SectionTitle(g, bounds, "Vehicle Information", "Read from the ECU over mode 09");
+            SectionTitle(g, bounds, Loc.T("vehicle.title"), Loc.T("vehicle.subtitle"));
 
             var card = new RectangleF(bounds.X, rowY, bounds.Width, 210);
             Draw.FillRounded(g, Draw.Alpha(Theme.CardAlt, Theme.Dark ? 255 : 150), card, 16f);
@@ -429,10 +427,10 @@ namespace obd_car_dangerous.Pages
 
             (string Label, string Value)[] identity =
             {
-                ("Make", Vehicle.Make),
-                ("Model", Vehicle.Model),
-                ("Year", Vehicle.Year),
-                ("VIN", Vehicle.Vin),
+                (Loc.T("vehicle.make"), Vehicle.Make),
+                (Loc.T("vehicle.model"), Vehicle.Model),
+                (Loc.T("vehicle.year"), Vehicle.Year),
+                (Loc.T("vehicle.vin"), Vehicle.Vin),
             };
 
             float y = card.Y + 26;
@@ -449,11 +447,11 @@ namespace obd_car_dangerous.Pages
 
             (string Label, string Value)[] ecu =
             {
-                ("OBD2 Protocol", AppState.Connection.Protocol),
-                ("ECU Version", Vehicle.EcuVersion),
-                ("Calibration ID", Vehicle.CalibrationId),
-                ("Engine", Vehicle.Engine),
-                ("Adapter", $"{AppState.Connection.Current.Name} · {AppState.Connection.Firmware}"),
+                (Loc.T("vehicle.protocol"), AppState.Connection.Protocol),
+                (Loc.T("vehicle.ecu"), Vehicle.EcuVersion),
+                (Loc.T("vehicle.calibration"), Vehicle.CalibrationId),
+                (Loc.T("vehicle.engine"), Vehicle.Engine),
+                (Loc.T("vehicle.adapter"), $"{AppState.Connection.Current.Name} · {AppState.Connection.Firmware}"),
             };
 
             foreach ((string label, string value) in ecu)
@@ -476,7 +474,7 @@ namespace obd_car_dangerous.Pages
 
         private void DrawAbout(Graphics g, RectangleF bounds)
         {
-            SectionTitle(g, bounds, "About");
+            SectionTitle(g, bounds, Loc.T("set.about"));
 
             var card = new RectangleF(bounds.X, rowY, bounds.Width, 190);
             Draw.FillRounded(g, Draw.Alpha(Theme.CardAlt, Theme.Dark ? 255 : 150), card, 16f);
@@ -485,20 +483,20 @@ namespace obd_car_dangerous.Pages
             Icons.Draw(g, "car", logo, Theme.Accent, Theme.CardAlt);
             Draw.WarningTriangle(g, new RectangleF(logo.Right - 42, logo.Bottom - 46, 46, 40), Theme.Critical, Color.White);
 
-            Draw.Text(g, "OBD2 Car Dangerous System", Draw.Font(30, FontStyle.Bold), Theme.Text, logo.Right + 34, card.Y + 38);
-            Draw.Text(g, "Version 1.0.0", Draw.Font(21), Theme.TextSoft, logo.Right + 34, card.Y + 80);
-            Draw.TextIn(g, "Real-time vehicle monitoring and fault detection for a safer drive.", Draw.Font(20), Theme.TextSoft,
+            Draw.Text(g, Loc.T("app.title"), Draw.Font(30, FontStyle.Bold), Theme.Text, logo.Right + 34, card.Y + 38);
+            Draw.Text(g, Loc.T("about.version", "1.0.0"), Draw.Font(21), Theme.TextSoft, logo.Right + 34, card.Y + 80);
+            Draw.TextIn(g, Loc.T("about.tagline"), Draw.Font(20), Theme.TextSoft,
                 new RectangleF(logo.Right + 34, card.Y + 112, card.Width - (logo.Right - card.X) - 60, 60));
 
             rowY = card.Bottom + 18;
 
             (string Label, string Value)[] rows =
             {
-                ("Build", $".NET {Environment.Version} · Windows Forms"),
-                ("Adapter support", "ELM327 over Bluetooth, Wi-Fi and USB"),
-                ("Protocols", "ISO 15765-4 CAN, ISO 9141-2, KWP2000, J1850"),
-                ("Shortcuts", "F1-F4 pages · F11 full screen · Ctrl+D theme · Esc back"),
-                ("Copyright", "© 2025 OBD2 System. All rights reserved."),
+                (Loc.T("about.build"), $".NET {Environment.Version} · Windows Forms"),
+                (Loc.T("about.adapters"), "ELM327 over Bluetooth, Wi-Fi and USB"),
+                (Loc.T("about.protocols"), "ISO 15765-4 CAN, ISO 9141-2, KWP2000, J1850"),
+                (Loc.T("about.shortcuts"), Loc.T("about.shortcuts.value")),
+                (Loc.T("about.copyright"), "© 2025 OBD2 System. All rights reserved."),
             };
 
             foreach ((string label, string value) in rows)
@@ -519,10 +517,10 @@ namespace obd_car_dangerous.Pages
             }
 
             var exit = new RectangleF(bounds.X, bounds.Bottom - 60, 260, 56);
-            DrawGhostButton(g, exit, "Exit application", Theme.Critical, () => OpenModal(
-                "Close the application?",
-                "Monitoring stops and the adapter link is released.",
-                "Exit", Theme.Critical, () => FindForm()?.Close()), "about-exit", 13f);
+            DrawGhostButton(g, exit, Loc.T("about.exit"), Theme.Critical, () => OpenModal(
+                Loc.T("about.exit.title"),
+                Loc.T("about.exit.body"),
+                Loc.T("about.exit.ok"), Theme.Critical, () => FindForm()?.Close()), "about-exit", 13f);
         }
     }
 }

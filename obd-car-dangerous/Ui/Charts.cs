@@ -67,7 +67,7 @@ namespace obd_car_dangerous.Ui
             }
             else
             {
-                Draw.TextCentered(g, "Waiting for data...", Draw.Font(19), axis, plot);
+                Draw.TextCentered(g, Services.Loc.T("live.waiting"), Draw.Font(19), axis, plot);
             }
 
             for (int i = 0; i < xLabels.Length; i++)

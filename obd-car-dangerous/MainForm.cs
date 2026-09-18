@@ -45,14 +45,16 @@ namespace obd_car_dangerous
             Controls.Add(sidebar);
 
             AppState.Telemetry.Updated += OnTelemetryUpdated;
-            AppState.Telemetry.ThresholdExceeded += (_, message) => ShowDanger("Danger Alert!", "LIMIT", message, null);
+            AppState.Telemetry.ThresholdExceeded += (_, message) => ShowDanger("LIMIT", message, null);
             AppState.Dtc.Changed += (_, _) => RefreshShell();
-            AppState.Dtc.DangerRaised += (_, record) => ShowDanger("Danger Alert!", record.Code, record.Effect, record);
+            AppState.Dtc.DangerRaised += (_, record) => ShowDanger(record.Code, record.Effect, record);
             AppState.Settings.Changed += (_, _) =>
             {
                 Theme.Dark = AppState.Settings.DarkMode;
+                Loc.Set(AppState.Settings.Language);
                 ApplyPowerRequest();
             };
+            Loc.Changed += (_, _) => RefreshShell();
             Theme.Changed += (_, _) =>
             {
                 BackColor = Theme.PageTop;
@@ -74,6 +76,9 @@ namespace obd_car_dangerous
         // ---- navigation ---------------------------------------------------
 
         public bool CanGoBack => stack.Count > 1;
+
+        private PageBase? CurrentPage =>
+            stack.Count > 0 && pages.TryGetValue(stack[^1].Page, out PageBase? page) ? page : null;
 
         public void Navigate(string page, object? argument = null)
         {
@@ -131,6 +136,13 @@ namespace obd_car_dangerous
             page.Visible = true;
             page.BringToFront();
             page.OnEnter(argument);
+
+            // Give the page focus so pages with a text field (the dictionary) receive typing at once.
+            if (page.CanFocus)
+            {
+                page.Focus();
+            }
+
             page.Invalidate();
 
             sidebar.Selected = RootOf(key);
@@ -141,6 +153,7 @@ namespace obd_car_dangerous
         private static string RootOf(string key) => key switch
         {
             "dtcdetail" => "dtc",
+            "dictionary" => "dictionary",
             "graph" => "livedata",
             "systemdetail" => "diagnostics",
             "vehicleinfo" or "connection" or "about" => "settings",
@@ -163,6 +176,7 @@ namespace obd_car_dangerous
                 "graph" => new LiveGraphPage(),
                 "dtc" => new DtcCodesPage(),
                 "dtcdetail" => new DtcDetailPage(),
+                "dictionary" => new DictionaryPage(),
                 "fuel" => new FuelPage(),
                 "trip" => new TripPage(),
                 "alarms" => new AlarmHistoryPage(),
@@ -179,7 +193,7 @@ namespace obd_car_dangerous
 
         // ---- danger overlay ------------------------------------------------
 
-        public void ShowDanger(string title, string code, string message, DtcRecord? record)
+        public void ShowDanger(string code, string message, DtcRecord? record)
         {
             if (!AppState.Settings.DangerPopup)
             {
@@ -187,7 +201,7 @@ namespace obd_car_dangerous
             }
 
             overlay?.Dispose();
-            overlay = new DangerOverlay(title, code, message, record)
+            overlay = new DangerOverlay(code, message, record)
             {
                 Shell = this,
                 Dock = DockStyle.Fill,
@@ -348,7 +362,16 @@ namespace obd_car_dangerous
                     return true;
 
                 case Keys.Alt | Keys.Left:
+                    Back();
+                    return true;
+
                 case Keys.Back:
+                    // The dictionary search field needs Backspace for itself.
+                    if (CurrentPage?.WantsTextInput == true)
+                    {
+                        return base.ProcessCmdKey(ref msg, keyData);
+                    }
+
                     Back();
                     return true;
 

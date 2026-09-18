@@ -49,10 +49,10 @@ namespace obd_car_dangerous.Services
 
         public static string HealthLabel => HealthScore switch
         {
-            >= 90 => "Excellent",
-            >= 70 => "Good",
-            >= 50 => "Fair",
-            _ => "Poor",
+            >= 90 => Loc.T("common.excellent"),
+            >= 70 => Loc.T("common.good"),
+            >= 50 => Loc.T("common.fair"),
+            _ => Loc.T("common.poor"),
         };
 
         /// <summary>Per-system rows for the diagnostics screen.</summary>
@@ -77,13 +77,14 @@ namespace obd_car_dangerous.Services
 
                     if (faults.Length == 0)
                     {
-                        return new SystemHealth(name, icon, "Good", 100, "No fault detected");
+                        return new SystemHealth(name, icon, "Good", 100, Loc.T("diag.nofault"));
                     }
 
                     bool high = faults.Any(f => f.Severity == "High");
                     int score = Math.Max(30, 100 - faults.Length * (high ? 22 : 12));
                     string status = high ? "Fault" : "Warning";
-                    return new SystemHealth(name, icon, status, score, $"{faults.Length} active code(s): {string.Join(", ", faults.Select(f => f.Code))}");
+                    return new SystemHealth(name, icon, status, score,
+                        Loc.T("diag.activecodes", faults.Length, string.Join(", ", faults.Select(f => f.Code))));
                 }
 
                 static SystemHealth Battery()
@@ -95,7 +96,8 @@ namespace obd_car_dangerous.Services
                         "battery",
                         weak ? "Warning" : "Good",
                         weak ? 62 : 94,
-                        $"Resting voltage {volts:0.0} V, charging {(Telemetry.Rpm > 900 ? "OK" : "idle")}");
+                        Loc.T("diag.batterydetail", volts.ToString("0.0"),
+                            Loc.T(Telemetry.Rpm > 900 ? "diag.charging.ok" : "diag.charging.idle")));
                 }
             }
         }
@@ -109,6 +111,14 @@ namespace obd_car_dangerous.Services
 
         public static void Start()
         {
+            // A settings file from an older build may name a language this version does not ship.
+            if (!Loc.Languages.Contains(Settings.Language))
+            {
+                Settings.Language = Loc.Languages[0];
+                Settings.Save();
+            }
+
+            Loc.Set(Settings.Language);
             Ui.Theme.Dark = Settings.DarkMode;
             if (!Settings.AutoConnect)
             {

@@ -8,12 +8,12 @@ namespace obd_car_dangerous.Pages
     internal sealed class LiveGraphPage : PageBase
     {
         private static readonly string[] Quick = { "rpm", "coolant", "o2", "stft", "speed", "maf" };
-        private static readonly (string Label, int Seconds)[] Ranges = { ("1 min", 60), ("5 min", 300), ("10 min", 600) };
+        private static readonly (int Minutes, int Seconds)[] Ranges = { (1, 60), (5, 300), (10, 600) };
 
         private string pidKey = "rpm";
         private int range;
 
-        public override string Title => "Live Data Graph";
+        public override string Title => Loc.T("graph.title");
 
         public override bool ShowBack => true;
 
@@ -47,7 +47,7 @@ namespace obd_car_dangerous.Pages
                     Draw.StrokeRounded(g, Theme.Border, rect, 14f, 1f);
                 }
 
-                Draw.TextCentered(g, pid.Label, Draw.Font(20, FontStyle.Bold), active ? Color.White : Theme.TextSoft, rect);
+                Draw.TextCentered(g, Loc.Pid(pid.Key, pid.Label), Draw.Font(20, FontStyle.Bold), active ? Color.White : Theme.TextSoft, rect);
 
                 string key = pid.Key;
                 Hit(rect, () =>
@@ -83,7 +83,7 @@ namespace obd_car_dangerous.Pages
 
             string[] labels = BuildTimeLabels(Ranges[range].Seconds);
             Charts.Line(g, RectangleF.Inflate(panel, -12, -12), values, min, max,
-                Color.FromArgb(46, 230, 120), $"{selected.Label} ({selected.Unit})", labels, darkPlot: true);
+                Color.FromArgb(46, 230, 120), $"{Loc.Pid(selected.Key, selected.Label)} ({selected.Unit})", labels, darkPlot: true);
 
             DrawStats(g, panel, values, selected);
 
@@ -101,7 +101,7 @@ namespace obd_car_dangerous.Pages
                     Draw.StrokeRounded(g, Theme.Border, rect, 16f, 1f);
                 }
 
-                Draw.TextCentered(g, Ranges[i].Label, Draw.Font(24, FontStyle.Bold), active ? Color.White : Theme.TextSoft, rect);
+                Draw.TextCentered(g, Loc.T("graph.range", Ranges[i].Minutes), Draw.Font(24, FontStyle.Bold), active ? Color.White : Theme.TextSoft, rect);
 
                 int index = i;
                 Hit(rect, () =>
@@ -133,10 +133,10 @@ namespace obd_car_dangerous.Pages
 
             (string Label, float Value)[] stats =
             {
-                ("Now", values[^1]),
-                ("Min", values.Min()),
-                ("Max", values.Max()),
-                ("Avg", values.Average()),
+                (Loc.T("graph.now"), values[^1]),
+                (Loc.T("graph.min"), values.Min()),
+                (Loc.T("graph.max"), values.Max()),
+                (Loc.T("graph.avg"), values.Average()),
             };
 
             float w = 130f;
