@@ -25,6 +25,10 @@ namespace obd_car_dangerous.Ui
         private readonly List<HitRegion> regions = new();
         private string? hoverId;
         private string? pressedId;
+        private bool draggingScrollbar;
+        private RectangleF scrollbarTrackPx = RectangleF.Empty;
+        private RectangleF scrollbarThumbPx = RectangleF.Empty;
+        private float scrollbarDragOffsetPx;
 
         protected PageBase()
         {
@@ -132,6 +136,9 @@ namespace obd_car_dangerous.Ui
             float y = track.Y + (track.Height - thumbH) * (ScrollY / ScrollMaxY);
             Draw.FillRounded(g, Theme.Dark ? Color.FromArgb(32, 62, 100) : Color.FromArgb(226, 233, 242), track, track.Width / 2f);
             Draw.FillRounded(g, Draw.Alpha(Theme.Accent, 160), new RectangleF(track.X, y, track.Width, thumbH), track.Width / 2f);
+
+            scrollbarTrackPx = new RectangleF(track.X * S, track.Y * S, track.Width * S, track.Height * S);
+            scrollbarThumbPx = new RectangleF(track.X * S, y * S, track.Width * S, thumbH * S);
         }
 
         // ---- hit testing -------------------------------------------------
@@ -175,6 +182,19 @@ namespace obd_car_dangerous.Ui
         protected override void OnMouseMove(MouseEventArgs e)
         {
             base.OnMouseMove(e);
+
+            if (draggingScrollbar)
+            {
+                float maxTravel = scrollbarTrackPx.Height - scrollbarThumbPx.Height;
+                if (maxTravel > 0)
+                {
+                    float newThumbTop = Math.Clamp(e.Y - scrollbarTrackPx.Y - scrollbarDragOffsetPx, 0f, maxTravel);
+                    ScrollY = (newThumbTop / maxTravel) * ScrollMaxY;
+                    Invalidate();
+                }
+                return;
+            }
+
             string? id = RegionAt(e.Location)?.Id;
             if (id != hoverId)
             {
@@ -187,6 +207,12 @@ namespace obd_car_dangerous.Ui
         protected override void OnMouseLeave(EventArgs e)
         {
             base.OnMouseLeave(e);
+            if (draggingScrollbar)
+            {
+                draggingScrollbar = false;
+                Capture = false;
+            }
+
             if (hoverId is not null || pressedId is not null)
             {
                 hoverId = null;
@@ -204,6 +230,29 @@ namespace obd_car_dangerous.Ui
                 return;
             }
 
+            if (scrollbarTrackPx.Contains(e.Location) && ScrollMaxY > 1)
+            {
+                draggingScrollbar = true;
+                Capture = true;
+                if (scrollbarThumbPx.Contains(e.Location))
+                {
+                    scrollbarDragOffsetPx = e.Y - scrollbarThumbPx.Y;
+                }
+                else
+                {
+                    float clickY = e.Y - scrollbarTrackPx.Y;
+                    float maxTravel = scrollbarTrackPx.Height - scrollbarThumbPx.Height;
+                    float newThumbTop = Math.Clamp(clickY - scrollbarThumbPx.Height / 2f, 0f, maxTravel > 0 ? maxTravel : 0f);
+                    scrollbarDragOffsetPx = scrollbarThumbPx.Height / 2f;
+                    if (maxTravel > 0)
+                    {
+                        ScrollY = (newThumbTop / maxTravel) * ScrollMaxY;
+                    }
+                    Invalidate();
+                }
+                return;
+            }
+
             pressedId = RegionAt(e.Location)?.Id;
             if (pressedId is not null)
             {
@@ -216,6 +265,14 @@ namespace obd_car_dangerous.Ui
             base.OnMouseUp(e);
             if (e.Button != MouseButtons.Left)
             {
+                return;
+            }
+
+            if (draggingScrollbar)
+            {
+                draggingScrollbar = false;
+                Capture = false;
+                Invalidate();
                 return;
             }
 
