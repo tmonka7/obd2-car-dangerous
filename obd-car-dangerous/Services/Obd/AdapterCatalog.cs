@@ -61,6 +61,17 @@ namespace obd_car_dangerous.Services.Obd
                 new AdapterProfile("Vgate iCar Pro", AdapterFamily.Elm327Ble, CommonPins,
                     "ELM327 clone, usually Bluetooth LE.")),
 
+            // Blue USB cable sold as "VAG-COM KKL 409.1": a dumb K-line interface with no ELM327
+            // firmware, so it only works with VAG specific software.
+            (new[] { "KKL", "409.1", "VAG-COM", "VAGCOM" },
+                new AdapterProfile("KKL 409.1 cable", AdapterFamily.Proprietary, Array.Empty<string>(),
+                    "KKL cables have no ELM327 firmware - they only work with VAG specific software.")),
+
+            // The blue ELM327 USB cable. Windows names the port after its USB serial chip.
+            (new[] { "CH340", "CH341", "FT232", "FTDI", "PL2303", "PROLIFIC", "CP210", "USB SERIAL", "USB-SERIAL" },
+                new AdapterProfile("ELM327 USB cable", AdapterFamily.Elm327Usb, Array.Empty<string>(),
+                    "USB serial adapter; tried as an ELM327.")),
+
             // The classic blue mini dongle and the orange/blue "OBDII Interface" box.
             (new[] { "OBDII", "OBD II", "OBD2", "ELM327", "ELM-327", "MINI327", "OBDCHECK", "VEEPEAK", "KONNWEI", "VIECAR" },
                 new AdapterProfile("ELM327 clone", AdapterFamily.Elm327Spp, CommonPins,

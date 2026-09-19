@@ -335,7 +335,7 @@ namespace obd_car_dangerous.Pages
                 Icons.Draw(g, icon, new RectangleF(row.X + 16, row.Y + 14, 30, 30),
                     activeNow ? Theme.Good : usable ? Theme.TextSoft : Theme.Warn, Theme.CardAlt);
 
-                Draw.TextIn(g, endpoint.Name, Draw.Font(21, FontStyle.Bold), usable ? Theme.Text : Theme.TextSoft,
+                Draw.TextIn(g, endpoint.DisplayName, Draw.Font(21, FontStyle.Bold), usable ? Theme.Text : Theme.TextSoft,
                     new RectangleF(row.X + 58, row.Y, 240, row.Height), StringAlignment.Near, StringAlignment.Center, false);
 
                 // A Bluetooth device id is a long Windows path, so show what the adapter is instead.

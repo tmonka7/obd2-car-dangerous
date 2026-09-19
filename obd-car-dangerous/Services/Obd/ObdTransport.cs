@@ -139,6 +139,46 @@ namespace obd_car_dangerous.Services.Obd
             port.Dispose();
         }
 
+        /// <summary>
+        /// COM ports with the name Windows shows for them, such as "USB-SERIAL CH340 (COM3)".
+        /// Falls back to the bare port list when the device enumeration is unavailable.
+        /// </summary>
+        public static List<(string Port, string Name)> PortsWithNames()
+        {
+            var named = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+            try
+            {
+                Task<Windows.Devices.Enumeration.DeviceInformationCollection> task =
+                    Windows.Devices.Enumeration.DeviceInformation
+                        .FindAllAsync(Windows.Devices.SerialCommunication.SerialDevice.GetDeviceSelector())
+                        .AsTask();
+
+                if (task.Wait(TimeSpan.FromSeconds(3)))
+                {
+                    foreach (Windows.Devices.Enumeration.DeviceInformation device in task.Result)
+                    {
+                        // The friendly name carries the port: "USB Serial Device (COM4)".
+                        System.Text.RegularExpressions.Match match =
+                            System.Text.RegularExpressions.Regex.Match(device.Name, @"\((COM\d+)\)");
+
+                        if (match.Success)
+                        {
+                            named[match.Groups[1].Value] = device.Name;
+                        }
+                    }
+                }
+            }
+            catch (Exception)
+            {
+                // No device enumeration available; bare port names will do.
+            }
+
+            return PortNames()
+                .Select(port => (port, named.TryGetValue(port, out string? name) ? name : port))
+                .ToList();
+        }
+
         /// <summary>COM ports currently present on the machine.</summary>
         public static string[] PortNames()
         {

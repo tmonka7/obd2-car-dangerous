@@ -59,6 +59,12 @@ namespace obd_car_dangerous.Services.Obd
                 AdapterCatalog.Identify("Maxi-VCI Mini", EndpointKind.Ble).SpeaksElm327, false);
             Check("USB cable is ELM327",
                 AdapterCatalog.Identify("COM5", EndpointKind.Serial).Family, AdapterFamily.Elm327Usb);
+            Check("CH340 USB cable recognised",
+                AdapterCatalog.Identify("USB-SERIAL CH340 (COM3)", EndpointKind.Serial).Model, "ELM327 USB cable");
+            Check("FTDI USB cable recognised",
+                AdapterCatalog.Identify("USB Serial Port (COM7)", EndpointKind.Serial).Family, AdapterFamily.Elm327Usb);
+            Check("KKL cable is not ELM327",
+                AdapterCatalog.Identify("VAG-COM KKL 409.1 (COM4)", EndpointKind.Serial).SpeaksElm327, false);
             Check("headphones are not adapters", AdapterCatalog.LooksLikeAdapter("WH-1000XM4"), false);
             Check("dongle names are adapters", AdapterCatalog.LooksLikeAdapter("V-LINK"), true);
 

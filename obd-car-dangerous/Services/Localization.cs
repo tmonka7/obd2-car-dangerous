@@ -184,6 +184,12 @@ namespace obd_car_dangerous.Services
             },
             ["conn.tryanyway"] = new[] { "Try anyway", "それでも試す", "仍然尝试" },
             ["conn.pairing"] = new[] { "Pairing...", "ペアリング中...", "配对中..." },
+            ["link.nousb"] = new[]
+            {
+                "No ELM327 answer on {0}. Check the CH340/FTDI driver - and note that a KKL 409.1 cable has no ELM327 firmware.",
+                "{0} から ELM327 の応答がありません。CH340/FTDI ドライバを確認してください。KKL 409.1 ケーブルには ELM327 ファームウェアがありません。",
+                "{0} 上没有 ELM327 响应。请检查 CH340/FTDI 驱动；KKL 409.1 线本身没有 ELM327 固件。",
+            },
             ["conn.hint"] = new[]
             {
                 "Bluetooth adapters are listed by name and paired for you; USB ones appear as COM ports. Turn the ignition on, then tap one.",

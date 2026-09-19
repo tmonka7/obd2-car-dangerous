@@ -29,6 +29,10 @@ namespace obd_car_dangerous.Services.Obd
 
         /// <summary>What we know about this model - family, pairing PINs, whether it speaks ELM327.</summary>
         public AdapterProfile Profile => AdapterCatalog.Identify(Name, Kind);
+
+        /// <summary>Name without the trailing port, which the list shows in its own column.</summary>
+        public string DisplayName =>
+            System.Text.RegularExpressions.Regex.Replace(Name, @"\s*\(COM\d+\)", string.Empty);
     }
 
     /// <summary>Latest values read from the car. Floats are written by the worker, read by the UI.</summary>
@@ -110,9 +114,20 @@ namespace obd_car_dangerous.Services.Obd
         {
             var found = new List<ObdEndpoint>();
 
-            foreach (string port in SerialObdTransport.PortNames())
+            if (includeBluetooth)
             {
-                found.Add(new ObdEndpoint(port, EndpointKind.Serial, port));
+                // Friendly names ("USB-SERIAL CH340 (COM3)") tell a USB cable from a modem.
+                foreach ((string port, string name) in SerialObdTransport.PortsWithNames())
+                {
+                    found.Add(new ObdEndpoint(name, EndpointKind.Serial, port));
+                }
+            }
+            else
+            {
+                foreach (string port in SerialObdTransport.PortNames())
+                {
+                    found.Add(new ObdEndpoint(port, EndpointKind.Serial, port));
+                }
             }
 
             if (includeBluetooth)
@@ -382,7 +397,11 @@ namespace obd_car_dangerous.Services.Obd
                 elm.Dispose();
             }
 
-            SetStatus(lastError);
+            // A silent COM port is usually a missing USB serial driver, or a KKL cable that has no
+            // ELM327 firmware at all - both worth saying out loud.
+            SetStatus(lastError == "No ELM327 answer"
+                ? Loc.T("link.nousb", endpoint.Address)
+                : lastError);
             return null;
         }
 

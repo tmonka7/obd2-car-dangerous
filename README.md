@@ -20,7 +20,9 @@ skip ahead; the sequence carries on behind the shell.
 | HH OBD Advanced (Bluetooth scan tool) | BLE version advertises as `OBDBLE` / `IOS-Vlink`; older ones are Bluetooth serial | Yes |
 | Mini ELM327 (blue dongle) | Bluetooth Classic serial, PIN 1234/0000/6789 | Yes |
 | "OBDII Interface" box (orange/blue) | Bluetooth Classic serial | Yes |
+| ELM327 USB cable (blue, CH340/FTDI) | COM port once the chip's driver is installed | Yes |
 | Autel MaxiVCI / AP200 / BT506 | Bluetooth, but Autel's own protocol | **No** - needs Autel software |
+| VAG-COM KKL 409.1 cable | Looks like the USB cable above but has no ELM327 firmware | **No** - K-line only |
 
 Anything else is tried as an ELM327: the app recognises the model where it can
 (`Services/Obd/AdapterCatalog.cs`) and falls back to a generic attempt otherwise. Autel-style
@@ -53,9 +55,15 @@ so no COM port has to be set up, and it pairs on the spot using the PINs the clo
 (1234, 0000, 6789) - no trip to Windows Bluetooth settings. Unpaired adapters in range are found by
 the inquiry that "Scan for adapters" runs.
 
-**USB cable** - `Services/Obd/ObdTransport.cs`. Appears as a COM port; an SPP adapter already bound
-to a COM port by Windows works here too. Baud probing tries 38400 and 115200 during start up, the
-full list on a manual connect.
+**USB cable** - `Services/Obd/ObdTransport.cs`. The blue ELM327 USB cable appears as a COM port once
+its chip driver (CH340, FTDI, Prolific or CP210x) is installed; the list shows the Windows device
+name, so `USB-SERIAL CH340 (COM3)` is recognisable rather than a bare `COM3`. An SPP adapter already
+bound to a COM port works here too. Baud probing tries 38400 and 115200 during start up, the full
+list on a manual connect.
+
+Beware the lookalike: a blue USB cable sold as **VAG-COM KKL 409.1** is a plain K-line interface
+with no ELM327 firmware. It is listed as "Not ELM327", and if one is tried anyway the failure says
+so rather than leaving you guessing at the driver.
 
 Turn the ignition on (engine running or key in position II) before connecting - with the ignition
 off the adapter answers but the ECU does not.

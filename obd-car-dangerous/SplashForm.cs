@@ -95,7 +95,7 @@ namespace obd_car_dangerous
 
             foreach (ObdEndpoint endpoint in candidates)
             {
-                Report(Loc.T("splash.connecting.on", endpoint.Name), 0.4f);
+                Report(Loc.T("splash.connecting.on", endpoint.DisplayName), 0.4f);
 
                 if (await link.ConnectAsync(endpoint, progressReport, quickProbe: true))
                 {
