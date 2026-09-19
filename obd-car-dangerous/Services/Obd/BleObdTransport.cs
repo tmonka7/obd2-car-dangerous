@@ -349,16 +349,6 @@ namespace obd_car_dangerous.Services.Obd
             }
         }
 
-        /// <summary>True when a device name looks like an OBD2 adapter rather than a headset.</summary>
-        public static bool LooksLikeAdapter(string name)
-        {
-            string upper = name.ToUpperInvariant();
-            return upper.Contains("OBD") || upper.Contains("ELM") || upper.Contains("VGATE") ||
-                   upper.Contains("ICAR") || upper.Contains("VEEPEAK") || upper.Contains("VLINKER") ||
-                   upper.Contains("V-LINK") || upper.Contains("KONNWEI") || upper.Contains("VIECAR") ||
-                   upper.Contains("CARISTA") || upper.Contains("LELINK") || upper.Contains("SCAN");
-        }
-
         // ---- WinRT helpers ---------------------------------------------------
 
         private static Guid Short(ushort id) => new($"0000{id:X4}-0000-1000-8000-00805F9B34FB");

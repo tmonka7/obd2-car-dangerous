@@ -80,11 +80,12 @@ namespace obd_car_dangerous
             await Task.Run(link.RefreshEndpoints);
 
             // The adapter that worked last time goes first, then anything whose name says OBD -
-            // a BLE dongle is a much better guess than a random COM port.
+            // a named dongle is a much better guess than a random COM port. Interfaces that do not
+            // speak ELM327 (Autel and friends) are skipped; trying them only wastes time.
             ObdEndpoint[] candidates = link.Found
-                .Where(e => e.Kind != EndpointKind.Demo)
+                .Where(e => e.Kind != EndpointKind.Demo && e.Profile.SpeaksElm327)
                 .OrderByDescending(e => e.Address == AppState.Settings.LastAdapter)
-                .ThenByDescending(e => e.Kind == EndpointKind.Ble && BleObdTransport.LooksLikeAdapter(e.Name))
+                .ThenByDescending(e => AdapterCatalog.LooksLikeAdapter(e.Name))
                 .ToArray();
             if (candidates.Length == 0)
             {

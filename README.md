@@ -13,10 +13,24 @@ The splash screen runs the real start sequence - find adapters, open the ELM327,
 protocol, read the VIN and the stored fault codes - and reports each step. Click or press a key to
 skip ahead; the sequence carries on behind the shell.
 
+## Supported adapters
+
+| Adapter | How it connects | Supported |
+| --- | --- | --- |
+| HH OBD Advanced (Bluetooth scan tool) | BLE version advertises as `OBDBLE` / `IOS-Vlink`; older ones are Bluetooth serial | Yes |
+| Mini ELM327 (blue dongle) | Bluetooth Classic serial, PIN 1234/0000/6789 | Yes |
+| "OBDII Interface" box (orange/blue) | Bluetooth Classic serial | Yes |
+| Autel MaxiVCI / AP200 / BT506 | Bluetooth, but Autel's own protocol | **No** - needs Autel software |
+
+Anything else is tried as an ELM327: the app recognises the model where it can
+(`Services/Obd/AdapterCatalog.cs`) and falls back to a generic attempt otherwise. Autel-style
+interfaces are marked "Not ELM327" in the list and skipped during auto-connect, but you can still
+tap one and choose "Try anyway" - if it happens to accept ELM327 commands it will work.
+
 ## Connecting a real ELM327
 
 Tested against the protocol, not against every clone: the driver targets ELM327 v1.3-v2.x, which
-covers the common v1.5 clones, over two transports.
+covers the common v1.5 clones, over three transports.
 
 **Bluetooth LE (BLE 4.0 dongles)** - `Services/Obd/BleObdTransport.cs`. A BLE adapter never becomes
 a COM port; it exposes a GATT service with a write characteristic and a notify characteristic, so
@@ -33,9 +47,15 @@ listens for advertisements, which finds adapters that were never paired. Known G
 If yours uses none of these, the driver falls back to any vendor service that has a writable and a
 notifying characteristic, and reports which profile matched.
 
-**USB cable or Bluetooth Classic (SPP)** - `Services/Obd/ObdTransport.cs`. These do appear as COM
-ports (pair SPP adapters in Windows Bluetooth settings first). Baud probing tries 38400 and 115200
-during start up, the full list on a manual connect.
+**Bluetooth Classic (serial port profile)** - `Services/Obd/RfcommObdTransport.cs`. The blue mini
+dongles and the boxed "OBDII interface" adapters use this. The app connects straight over RFCOMM,
+so no COM port has to be set up, and it pairs on the spot using the PINs the clones ship with
+(1234, 0000, 6789) - no trip to Windows Bluetooth settings. Unpaired adapters in range are found by
+the inquiry that "Scan for adapters" runs.
+
+**USB cable** - `Services/Obd/ObdTransport.cs`. Appears as a COM port; an SPP adapter already bound
+to a COM port by Windows works here too. Baud probing tries 38400 and 115200 during start up, the
+full list on a manual connect.
 
 Turn the ignition on (engine running or key in position II) before connecting - with the ignition
 off the adapter answers but the ECU does not.
@@ -95,9 +115,11 @@ connected to a car.
 - `Ui/Draw.cs`, `Ui/Icons.cs`, `Ui/Charts.cs` - rounded cards, gauges, vector icons, line and bar charts.
 - `Ui/Sidebar.cs` - navigation rail; collapses to icons below 1180 px wide or via the hamburger.
 - `MainForm.cs` - shell, navigation stack, full screen handling, danger alerts, screen keep-alive.
-- `Services/Obd/` - the adapter driver: `ObdTransport` (COM port pipe), `BleObdTransport`
-  (Bluetooth LE GATT pipe), `Elm327` (handshake, commands, response parsing), `ObdPids` (PID table
-  and formulas), `ObdLink` (worker thread, polling rotation, request queue) and `ObdSelfTest`.
+- `Services/Obd/` - the adapter driver: `ObdTransport` (COM port pipe), `RfcommObdTransport`
+  (Bluetooth Classic pipe and pairing), `BleObdTransport` (Bluetooth LE GATT pipe),
+  `AdapterCatalog` (which model is which), `Elm327` (handshake, commands, response parsing),
+  `ObdPids` (PID table and formulas), `ObdLink` (worker thread, polling rotation, request queue)
+  and `ObdSelfTest`.
 - `Services/` - `Telemetry` (live values from the link, or a simulated drive cycle, plus 10 minutes
   of history per PID), `DtcStore` (fault codes and the alarm log), `DtcCatalog` (the code
   dictionary), `ConnectionService` (live/demo state), `Loc` (translations), `AppSettings` (persisted

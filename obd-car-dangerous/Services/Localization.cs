@@ -169,11 +169,26 @@ namespace obd_car_dangerous.Services
             ["conn.demo"] = new[] { "Use demo data", "デモデータを使う", "使用演示数据" },
             ["conn.refresh"] = new[] { "Scan for adapters", "アダプタを検索", "搜索适配器" },
             ["conn.vin"] = new[] { "VIN {0}", "VIN {0}", "VIN {0}" },
+            ["conn.unsupported"] = new[] { "Not ELM327", "ELM327 非対応", "非 ELM327" },
+            ["conn.unsupported.title"] = new[]
+            {
+                "{0} is not an ELM327",
+                "{0} は ELM327 ではありません",
+                "{0} 不是 ELM327",
+            },
+            ["conn.unsupported.body"] = new[]
+            {
+                "This app speaks the ELM327 AT command set. You can still try it - if the adapter happens to accept ELM327 commands it will work.",
+                "このアプリは ELM327 の AT コマンドを使います。試すことはでき、アダプタが ELM327 コマンドを受け入れれば動作します。",
+                "本应用使用 ELM327 的 AT 命令集。您仍可尝试，若该适配器恰好支持 ELM327 命令就能工作。",
+            },
+            ["conn.tryanyway"] = new[] { "Try anyway", "それでも試す", "仍然尝试" },
+            ["conn.pairing"] = new[] { "Pairing...", "ペアリング中...", "配对中..." },
             ["conn.hint"] = new[]
             {
-                "Bluetooth LE adapters are listed by name, USB and Bluetooth SPP ones as COM ports. Turn the ignition on, then tap one.",
-                "Bluetooth LE アダプタは名前で、USB や Bluetooth SPP のアダプタは COM ポートとして表示されます。イグニッションをオンにしてから選んでください。",
-                "蓝牙 LE 适配器按名称列出，USB 与蓝牙 SPP 适配器显示为 COM 端口。请先打开点火开关，再点击选择。",
+                "Bluetooth adapters are listed by name and paired for you; USB ones appear as COM ports. Turn the ignition on, then tap one.",
+                "Bluetooth アダプタは名前で表示され、ペアリングも自動で行います。USB は COM ポートとして表示されます。イグニッションをオンにしてから選んでください。",
+                "蓝牙适配器按名称列出并自动配对；USB 适配器显示为 COM 端口。请先打开点火开关，再点击选择。",
             },
             ["common.good"] = new[] { "Good", "良好", "良好" },
             ["common.excellent"] = new[] { "Excellent", "優秀", "优秀" },

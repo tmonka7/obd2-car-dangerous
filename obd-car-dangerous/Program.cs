@@ -20,18 +20,27 @@ namespace obd_car_dangerous
                 string report = Path.Combine(Path.GetTempPath(), "obd-devices.txt");
                 using var writer = new StreamWriter(report);
 
-                writer.WriteLine("Serial ports and paired Bluetooth LE devices:");
+                writer.WriteLine("COM ports and paired Bluetooth devices:");
                 foreach (Services.Obd.ObdEndpoint endpoint in Services.Obd.ObdLink.Discover())
                 {
-                    writer.WriteLine($"  {endpoint.Kind,-6} {endpoint.Name,-28} {endpoint.Address}");
+                    Describe(writer, endpoint);
                 }
 
                 writer.WriteLine();
-                writer.WriteLine("Bluetooth LE advertisements (5 s scan):");
+                writer.WriteLine("Unpaired devices in range (Bluetooth LE advertisements + Classic inquiry):");
                 foreach (Services.Obd.ObdEndpoint endpoint in
                          Services.Obd.ObdLink.ScanBluetoothAsync(TimeSpan.FromSeconds(5)).GetAwaiter().GetResult())
                 {
-                    writer.WriteLine($"  {endpoint.Name,-28} {endpoint.Address}");
+                    Describe(writer, endpoint);
+                }
+
+                static void Describe(TextWriter log, Services.Obd.ObdEndpoint endpoint)
+                {
+                    Services.Obd.AdapterProfile profile = endpoint.Profile;
+                    string usable = endpoint.Kind == Services.Obd.EndpointKind.Demo ? "demo"
+                        : profile.SpeaksElm327 ? "ELM327" : "NOT ELM327";
+                    log.WriteLine($"  {endpoint.Kind,-13} {endpoint.Name,-26} {usable,-10} {profile.Model}");
+                    log.WriteLine($"                {endpoint.Address}");
                 }
 
                 writer.Flush();

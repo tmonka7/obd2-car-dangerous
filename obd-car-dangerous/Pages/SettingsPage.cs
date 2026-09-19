@@ -323,33 +323,54 @@ namespace obd_car_dangerous.Pages
                 bool activeNow = current && connected;
                 Draw.FillRounded(g, IsHover(id) ? Theme.CardAlt : Draw.Alpha(Theme.CardAlt, Theme.Dark ? 255 : 140), row, 12f);
 
+                AdapterProfile profile = endpoint.Profile;
+                bool usable = profile.SpeaksElm327;
+
                 string icon = endpoint.Kind switch
                 {
-                    EndpointKind.Ble => "bluetooth",
+                    EndpointKind.Ble or EndpointKind.BluetoothSpp => "bluetooth",
                     EndpointKind.Demo => "chart",
                     _ => "car",
                 };
                 Icons.Draw(g, icon, new RectangleF(row.X + 16, row.Y + 14, 30, 30),
-                    activeNow ? Theme.Good : Theme.TextSoft, Theme.CardAlt);
+                    activeNow ? Theme.Good : usable ? Theme.TextSoft : Theme.Warn, Theme.CardAlt);
 
-                Draw.TextIn(g, endpoint.Name, Draw.Font(21, FontStyle.Bold), Theme.Text,
+                Draw.TextIn(g, endpoint.Name, Draw.Font(21, FontStyle.Bold), usable ? Theme.Text : Theme.TextSoft,
                     new RectangleF(row.X + 58, row.Y, 240, row.Height), StringAlignment.Near, StringAlignment.Center, false);
-                // A BLE device id is a long Windows path, so show what it is instead.
+
+                // A Bluetooth device id is a long Windows path, so show what the adapter is instead.
                 string endpointDetail = endpoint.Kind switch
                 {
                     EndpointKind.Demo => Loc.T("state.demo.note"),
-                    EndpointKind.Ble => endpoint.Transport,
-                    _ => endpoint.Address,
+                    EndpointKind.Serial => $"{endpoint.Address} · {AdapterCatalog.FamilyLabel(profile.Family)}",
+                    _ => AdapterCatalog.FamilyLabel(profile.Family),
                 };
                 Draw.TextIn(g, endpointDetail,
-                    Draw.Font(17), Theme.TextSoft,
+                    Draw.Font(17), usable ? Theme.TextSoft : Theme.Warn,
                     new RectangleF(row.X + 300, row.Y, row.Width - 460, row.Height), StringAlignment.Near, StringAlignment.Center, false);
-                Draw.TextIn(g, activeNow ? Loc.T("state.connected") : Loc.T("conn.tap"), Draw.Font(17, FontStyle.Bold),
-                    activeNow ? Theme.Good : Theme.Accent,
+
+                string action = activeNow ? Loc.T("state.connected") : usable ? Loc.T("conn.tap") : Loc.T("conn.unsupported");
+                Draw.TextIn(g, action, Draw.Font(17, FontStyle.Bold),
+                    activeNow ? Theme.Good : usable ? Theme.Accent : Theme.Warn,
                     new RectangleF(row.Right - 200, row.Y, 184, row.Height), StringAlignment.Far, StringAlignment.Center, false);
 
                 ObdEndpoint captured = endpoint;
-                Hit(row, () => link.Connect(captured), id);
+                Hit(row, () =>
+                {
+                    if (usable)
+                    {
+                        link.Connect(captured);
+                        return;
+                    }
+
+                    // Not a known ELM327, but the user may still want to see what happens.
+                    OpenModal(
+                        Loc.T("conn.unsupported.title", captured.Profile.Model),
+                        profile.Note + "\n\n" + Loc.T("conn.unsupported.body"),
+                        Loc.T("conn.tryanyway"),
+                        Theme.Warn,
+                        () => link.Connect(captured));
+                }, id);
             }
 
             Draw.TextIn(g, live ? Loc.T("conn.signal", link.SignalStrength, link.Firmware) : Loc.T("conn.hint"),

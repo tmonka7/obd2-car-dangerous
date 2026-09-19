@@ -48,6 +48,20 @@ namespace obd_car_dangerous.Services.Obd
             Check("short fuel trim", Decode("stft", 0x80), 0f);
             Check("battery", Decode("battery", 0x31, 0x38)?.ToString("0.00"), "12.60");
 
+            // ---- adapter identification ------------------------------------
+            Check("mini ELM327 clone",
+                AdapterCatalog.Identify("OBDII", EndpointKind.BluetoothSpp).Family, AdapterFamily.Elm327Spp);
+            Check("HH OBD Advanced BLE",
+                AdapterCatalog.Identify("OBDBLE", EndpointKind.Ble).Family, AdapterFamily.Elm327Ble);
+            Check("HH OBD over serial",
+                AdapterCatalog.Identify("HHOBD", EndpointKind.BluetoothSpp).Model, "HH OBD Advanced");
+            Check("Autel is proprietary",
+                AdapterCatalog.Identify("Maxi-VCI Mini", EndpointKind.Ble).SpeaksElm327, false);
+            Check("USB cable is ELM327",
+                AdapterCatalog.Identify("COM5", EndpointKind.Serial).Family, AdapterFamily.Elm327Usb);
+            Check("headphones are not adapters", AdapterCatalog.LooksLikeAdapter("WH-1000XM4"), false);
+            Check("dongle names are adapters", AdapterCatalog.LooksLikeAdapter("V-LINK"), true);
+
             // ---- full exchanges against a scripted adapter -----------------
             var scripted = new ScriptedTransport(new Dictionary<string, string>
             {

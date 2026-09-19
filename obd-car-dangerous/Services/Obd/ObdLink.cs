@@ -4,24 +4,31 @@ namespace obd_car_dangerous.Services.Obd
 {
     internal enum EndpointKind
     {
-        /// <summary>USB cable or a Bluetooth Classic (SPP) pairing, both of which are COM ports.</summary>
+        /// <summary>A COM port: a USB cable, or an SPP adapter already bound to a port by Windows.</summary>
         Serial,
 
-        /// <summary>Bluetooth Low Energy adapter, reached over GATT - no COM port involved.</summary>
+        /// <summary>Bluetooth Classic adapter reached straight over RFCOMM, no COM port needed.</summary>
+        BluetoothSpp,
+
+        /// <summary>Bluetooth Low Energy adapter, reached over GATT.</summary>
         Ble,
 
         Demo,
     }
 
-    /// <summary>Somewhere an adapter might be: a COM port, a BLE device, or the built in demo feed.</summary>
+    /// <summary>Somewhere an adapter might be: a COM port, a Bluetooth device, or the demo feed.</summary>
     internal sealed record ObdEndpoint(string Name, EndpointKind Kind, string Address, int Baud = 38400)
     {
         public string Transport => Kind switch
         {
-            EndpointKind.Serial => "USB / Bluetooth SPP",
+            EndpointKind.Serial => "USB / COM port",
+            EndpointKind.BluetoothSpp => "Bluetooth serial",
             EndpointKind.Ble => "Bluetooth LE",
             _ => "Demo",
         };
+
+        /// <summary>What we know about this model - family, pairing PINs, whether it speaks ELM327.</summary>
+        public AdapterProfile Profile => AdapterCatalog.Identify(Name, Kind);
     }
 
     /// <summary>Latest values read from the car. Floats are written by the worker, read by the UI.</summary>
@@ -110,12 +117,14 @@ namespace obd_car_dangerous.Services.Obd
 
             if (includeBluetooth)
             {
-                List<(string Id, string Name)> paired = BleObdTransport.PairedDevices();
+                // Bluetooth Classic first: the blue mini dongles and the boxed "OBDII interface"
+                // adapters are all serial port profile devices.
+                foreach ((string id, string name) in Filter(RfcommObdTransport.PairedDevices()))
+                {
+                    found.Add(new ObdEndpoint(name, EndpointKind.BluetoothSpp, id, 0));
+                }
 
-                // Show likely adapters only; if nothing looks like one, show everything paired so
-                // an oddly named dongle can still be picked.
-                var likely = paired.Where(d => BleObdTransport.LooksLikeAdapter(d.Name)).ToList();
-                foreach ((string id, string name) in likely.Count > 0 ? likely : paired)
+                foreach ((string id, string name) in Filter(BleObdTransport.PairedDevices()))
                 {
                     found.Add(new ObdEndpoint(name, EndpointKind.Ble, id, 0));
                 }
@@ -125,15 +134,36 @@ namespace obd_car_dangerous.Services.Obd
             return found;
         }
 
-        /// <summary>Advertisement scan, which also finds BLE adapters that are not paired yet.</summary>
+        /// <summary>
+        /// Finds adapters that are not paired yet: a BLE advertisement scan plus a Bluetooth
+        /// Classic inquiry, so a dongle straight out of the box can be picked from the list.
+        /// </summary>
         public static async Task<List<ObdEndpoint>> ScanBluetoothAsync(TimeSpan duration)
         {
-            List<(string Id, string Name)> seen = await BleObdTransport.ScanAsync(duration).ConfigureAwait(false);
+            Task<List<(string Id, string Name)>> ble = BleObdTransport.ScanAsync(duration);
+            Task<List<(string Id, string Name)>> classic = RfcommObdTransport.ScanAsync();
 
-            return seen
-                .Where(d => BleObdTransport.LooksLikeAdapter(d.Name))
-                .Select(d => new ObdEndpoint(d.Name, EndpointKind.Ble, d.Id, 0))
-                .ToList();
+            await Task.WhenAll(ble, classic).ConfigureAwait(false);
+
+            var found = new List<ObdEndpoint>();
+            found.AddRange(classic.Result
+                .Where(d => AdapterCatalog.LooksLikeAdapter(d.Name))
+                .Select(d => new ObdEndpoint(d.Name, EndpointKind.BluetoothSpp, d.Id, 0)));
+            found.AddRange(ble.Result
+                .Where(d => AdapterCatalog.LooksLikeAdapter(d.Name))
+                .Select(d => new ObdEndpoint(d.Name, EndpointKind.Ble, d.Id, 0)));
+
+            return found;
+        }
+
+        /// <summary>
+        /// Keeps the list useful: likely adapters only, but everything paired when none of the
+        /// names look like one, so an oddly named dongle can still be picked.
+        /// </summary>
+        private static List<(string Id, string Name)> Filter(List<(string Id, string Name)> devices)
+        {
+            var likely = devices.Where(d => AdapterCatalog.LooksLikeAdapter(d.Name)).ToList();
+            return likely.Count > 0 ? likely : devices;
         }
 
         // ---- connect / disconnect -------------------------------------------
@@ -277,6 +307,30 @@ namespace obd_car_dangerous.Services.Obd
         private Elm327? OpenAdapter(ObdEndpoint endpoint, IProgress<string>? progress, bool quickProbe)
         {
             TimeSpan handshake = quickProbe ? TimeSpan.FromMilliseconds(1200) : TimeSpan.FromSeconds(3);
+
+            if (endpoint.Kind == EndpointKind.BluetoothSpp)
+            {
+                // Pair on the spot if needed - the clones all use one of three fixed PINs.
+                if (endpoint.Profile.Pins.Length > 0)
+                {
+                    progress?.Report($"Pairing with {endpoint.Name}");
+                    RfcommObdTransport.TryPairAsync(endpoint.Address, endpoint.Profile.Pins)
+                        .Wait(TimeSpan.FromSeconds(quickProbe ? 8 : 20));
+                }
+
+                progress?.Report($"Connecting to {endpoint.Name} over Bluetooth serial");
+                var spp = new Elm327(new RfcommObdTransport(endpoint.Address, endpoint.Name,
+                    TimeSpan.FromSeconds(quickProbe ? 6 : 12)));
+
+                if (spp.Initialize(out string sppError, TimeSpan.FromSeconds(quickProbe ? 3 : 5)))
+                {
+                    return spp;
+                }
+
+                spp.Dispose();
+                SetStatus(sppError);
+                return null;
+            }
 
             if (endpoint.Kind == EndpointKind.Ble)
             {
