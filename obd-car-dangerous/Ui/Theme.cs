@@ -22,29 +22,29 @@ namespace obd_car_dangerous.Ui
             }
         }
 
-        // Brand colours - identical in both themes.
-        public static Color Accent => Color.FromArgb(0, 122, 255);
-        public static Color AccentDeep => Color.FromArgb(9, 71, 150);
-        public static Color Good => Color.FromArgb(29, 185, 84);
-        public static Color Warn => Color.FromArgb(247, 181, 0);
-        public static Color Critical => Color.FromArgb(232, 32, 52);
-        public static Color Violet => Color.FromArgb(99, 91, 255);
-        public static Color Orange => Color.FromArgb(247, 146, 20);
+        // Brand colours - elevated to feel more premium and modern.
+        public static Color Accent => Color.FromArgb(66, 133, 244);
+        public static Color AccentDeep => Color.FromArgb(23, 86, 196);
+        public static Color Good => Color.FromArgb(38, 194, 114);
+        public static Color Warn => Color.FromArgb(255, 178, 60);
+        public static Color Critical => Color.FromArgb(235, 77, 96);
+        public static Color Violet => Color.FromArgb(128, 98, 255);
+        public static Color Orange => Color.FromArgb(255, 153, 72);
 
-        // Shell (sidebar + header) is always the deep blue of the mock-ups.
-        public static Color ShellTop => Color.FromArgb(10, 63, 138);
-        public static Color ShellBottom => Color.FromArgb(6, 40, 92);
-        public static Color ShellItem => Color.FromArgb(19, 84, 170);
-        public static Color ShellText => Color.FromArgb(226, 238, 252);
+        // Shell (sidebar + header) keeps the deep blue brand but with a richer finish.
+        public static Color ShellTop => Color.FromArgb(15, 69, 146);
+        public static Color ShellBottom => Color.FromArgb(8, 43, 98);
+        public static Color ShellItem => Color.FromArgb(22, 90, 190);
+        public static Color ShellText => Color.FromArgb(233, 242, 255);
 
-        public static Color PageTop => dark ? Color.FromArgb(9, 24, 44) : Color.FromArgb(238, 244, 252);
-        public static Color PageBottom => dark ? Color.FromArgb(5, 14, 28) : Color.FromArgb(222, 233, 247);
-        public static Color Card => dark ? Color.FromArgb(17, 38, 66) : Color.White;
-        public static Color CardAlt => dark ? Color.FromArgb(22, 48, 82) : Color.FromArgb(244, 248, 253);
-        public static Color Border => dark ? Color.FromArgb(38, 72, 114) : Color.FromArgb(216, 227, 240);
-        public static Color Text => dark ? Color.FromArgb(233, 241, 252) : Color.FromArgb(14, 33, 61);
-        public static Color TextSoft => dark ? Color.FromArgb(150, 176, 210) : Color.FromArgb(101, 122, 150);
-        public static Color Shadow => dark ? Color.FromArgb(70, 0, 0, 0) : Color.FromArgb(28, 20, 50, 90);
+        public static Color PageTop => dark ? Color.FromArgb(6, 17, 31) : Color.FromArgb(244, 248, 254);
+        public static Color PageBottom => dark ? Color.FromArgb(11, 23, 39) : Color.FromArgb(234, 240, 249);
+        public static Color Card => dark ? Color.FromArgb(18, 38, 62) : Color.FromArgb(255, 255, 255);
+        public static Color CardAlt => dark ? Color.FromArgb(23, 48, 78) : Color.FromArgb(247, 250, 255);
+        public static Color Border => dark ? Color.FromArgb(46, 78, 112) : Color.FromArgb(215, 225, 238);
+        public static Color Text => dark ? Color.FromArgb(239, 245, 255) : Color.FromArgb(11, 31, 56);
+        public static Color TextSoft => dark ? Color.FromArgb(151, 179, 211) : Color.FromArgb(99, 118, 145);
+        public static Color Shadow => dark ? Color.FromArgb(80, 0, 0, 0) : Color.FromArgb(30, 27, 62, 110);
 
         public static Color Severity(string severity) => severity switch
         {

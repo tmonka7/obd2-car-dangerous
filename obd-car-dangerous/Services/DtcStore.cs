@@ -225,7 +225,7 @@ namespace obd_car_dangerous.Services
         private static DtcRecord Build(string code, DtcStatus status, Dictionary<string, string> freeze) => new()
         {
             Code = code,
-            Description = DtcCatalog.Find(code)?.Description ?? "Manufacturer specific code",
+            Description = DtcCatalog.Find(code)?.LocalizedDescription ?? "Manufacturer specific code",
             Severity = SeverityOf(code),
             Status = status,
             System = SystemOf(code),
