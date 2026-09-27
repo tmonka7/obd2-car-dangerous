@@ -1,4 +1,5 @@
 using System.Drawing.Drawing2D;
+using obd_car_dangerous.Pages.Scan;
 using obd_car_dangerous.Services;
 using obd_car_dangerous.Ui;
 
@@ -7,32 +8,8 @@ namespace obd_car_dangerous.Pages
     /// <summary>Vehicle health: overall score, per system status and the full system scan.</summary>
     internal sealed class DiagnosticsPage : PageBase
     {
-        private readonly System.Windows.Forms.Timer scanTimer = new() { Interval = 60 };
-        private float scanProgress = -1f;
-        private int scanSystem;
-
-        public DiagnosticsPage()
-        {
-            scanTimer.Tick += async (_, _) =>
-            {
-                scanProgress += 0.018f;
-                scanSystem = Math.Min(AppState.Systems.Count - 1, (int)(scanProgress * AppState.Systems.Count));
-                if (scanProgress >= 1f)
-                {
-                    scanTimer.Stop();
-                    scanProgress = -1f;
-                    await AppState.Dtc.RescanAsync();
-                    AppState.MarkScanned();
-                    Shell.RefreshShell();
-                    if (AppState.Settings.AlertSound)
-                    {
-                        System.Media.SystemSounds.Asterisk.Play();
-                    }
-                }
-
-                Invalidate();
-            };
-        }
+        /// <summary>Progress of the full system scan (its own screen), or -1 when none is running.</summary>
+        private static float ScanProgress => ScanSession.Running ? ScanSession.Fraction : -1f;
 
         public override string Title => Loc.T("diag.title");
 
@@ -55,8 +32,11 @@ namespace obd_car_dangerous.Pages
 
         private void DrawScoreCard(Graphics g, RectangleF bounds)
         {
-            Draw.CardShadow(g, bounds, 22f);
-            Draw.GradientRounded(g, Color.FromArgb(16, 68, 143), Color.FromArgb(8, 36, 82), bounds, 22f);
+            Draw.Card(g, bounds, 14f);
+            using (var wash = new LinearGradientBrush(RectangleF.Inflate(bounds, 0, 1), Color.FromArgb(46, 238, 24, 52), Color.FromArgb(0, 238, 24, 52), LinearGradientMode.Vertical))
+            {
+                Draw.FillRounded(g, wash, bounds, 14f);
+            }
 
             int score = AppState.HealthScore;
             float size = Math.Min(bounds.Width - 90, bounds.Height * 0.52f);
@@ -79,16 +59,16 @@ namespace obd_car_dangerous.Pages
             // Scan state / button.
             var footer = new RectangleF(bounds.X + 22, bounds.Bottom - 132, bounds.Width - 44, 110);
 
+            float scanProgress = ScanProgress;
             if (scanProgress >= 0f)
             {
-                IReadOnlyList<SystemHealth> systems = AppState.Systems;
-                Draw.TextIn(g, Loc.T("diag.scanning", Loc.SystemName(systems[Math.Clamp(scanSystem, 0, systems.Count - 1)].Name)),
+                Draw.TextIn(g, Loc.T("diag.scanning", ScanSession.Current.CardName),
                     Draw.Font(20, FontStyle.Bold), Color.White,
                     new RectangleF(footer.X, footer.Y, footer.Width, 30), StringAlignment.Near, StringAlignment.Center, false);
 
                 var track = new RectangleF(footer.X, footer.Y + 38, footer.Width, 16);
-                Draw.FillRounded(g, Color.FromArgb(40, 255, 255, 255), track, 8f);
-                Draw.FillRounded(g, Color.FromArgb(0, 174, 243),
+                Draw.FillRounded(g, Theme.Track, track, 8f);
+                Draw.FillRounded(g, Theme.Accent,
                     new RectangleF(track.X, track.Y, Math.Max(16f, track.Width * scanProgress), track.Height), 8f);
                 Draw.TextIn(g, $"{scanProgress * 100:0} %", Draw.Font(18), Draw.Alpha(Color.White, 200),
                     new RectangleF(footer.X, track.Bottom + 8, footer.Width, 28), StringAlignment.Far, StringAlignment.Center, false);
@@ -99,7 +79,7 @@ namespace obd_car_dangerous.Pages
                     new RectangleF(footer.X, footer.Y, footer.Width, 30), StringAlignment.Near, StringAlignment.Center, false);
 
                 var button = new RectangleF(footer.X, footer.Y + 40, footer.Width, 62);
-                DrawButton(g, button, Loc.T("diag.fullscan"), Color.FromArgb(0, 132, 255), Color.White, StartScan, "diag-scan", 16f);
+                DrawButton(g, button, Loc.T("diag.fullscan"), Theme.Accent, Color.White, StartScan, "diag-scan", 16f);
             }
         }
 
@@ -112,9 +92,7 @@ namespace obd_car_dangerous.Pages
                 return;
             }
 
-            scanProgress = 0f;
-            scanSystem = 0;
-            scanTimer.Start();
+            Shell.Navigate("fullscan", "restart");
         }
 
         private void DrawSystems(Graphics g, RectangleF bounds)
@@ -128,20 +106,24 @@ namespace obd_car_dangerous.Pages
                 SystemHealth system = systems[i];
                 var row = new RectangleF(bounds.X, bounds.Y + i * (rowH + gap), bounds.Width, rowH);
                 string id = $"sys-{system.Name}";
-                bool scanning = scanProgress >= 0f && i <= scanSystem;
+                bool scanning = ScanSession.Running;
 
-                Draw.Card(g, row, 16f, IsHover(id) ? Theme.CardAlt : Theme.Card);
+                Draw.Card(g, row, 14f, IsHover(id) ? Theme.CardAlt : Theme.Card);
 
+                // Status tile as the scan design draws its modules: tinted glass, bright outline and glyph.
                 Color color = AppState.StatusColor(system.Status);
                 var iconBox = new RectangleF(row.X + 18, row.Y + (row.Height - 58) / 2f, 58, 58);
-                Draw.FillRounded(g, color, iconBox, 13f);
-                Icons.Draw(g, system.Icon, RectangleF.Inflate(iconBox, -14, -14), Color.White, color);
+                Color glass = Draw.Lerp(color, Theme.Card, 0.7f);
+                Draw.FillRounded(g, Draw.Alpha(color, 24), RectangleF.Inflate(iconBox, 4, 4), 15f);
+                Draw.FillRounded(g, glass, iconBox, 12f);
+                Draw.StrokeRounded(g, Draw.Alpha(color, 180), iconBox, 12f, 1.5f);
+                Icons.Draw(g, system.Icon, RectangleF.Inflate(iconBox, -14, -14), Draw.Lerp(color, Color.White, 0.3f), glass);
 
                 Draw.TextIn(g, Loc.SystemName(system.Name), Draw.Font(25, FontStyle.Bold), Theme.Text,
                     new RectangleF(iconBox.Right + 20, row.Y + 12, row.Width * 0.42f, row.Height / 2f),
                     StringAlignment.Near, StringAlignment.Center, false);
 
-                Draw.TextIn(g, scanning && scanProgress < 1f ? Loc.T("diag.reading") : system.Detail, Draw.Font(17), Theme.TextSoft,
+                Draw.TextIn(g, scanning ? Loc.T("diag.reading") : system.Detail, Draw.Font(17), Theme.TextSoft,
                     new RectangleF(iconBox.Right + 20, row.Y + row.Height / 2f - 6, row.Width * 0.5f, row.Height / 2f),
                     StringAlignment.Near, StringAlignment.Center, false);
 
@@ -153,16 +135,6 @@ namespace obd_car_dangerous.Pages
                 SystemHealth captured = system;
                 Hit(row, () => Shell.Navigate("systemdetail", captured.Name), id);
             }
-        }
-
-        protected override void Dispose(bool disposing)
-        {
-            if (disposing)
-            {
-                scanTimer.Dispose();
-            }
-
-            base.Dispose(disposing);
         }
     }
 }

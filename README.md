@@ -1,6 +1,6 @@
 # OBD2 Car Dangerous System
 
-Windows Forms (.NET 8) vehicle monitoring dashboard. Every screen from the design set is implemented
+Windows Forms (.NET 8) vehicle monitoring dashboard in the Redline style of `design/full-system-scan.png`. Every screen from the design set is implemented
 as a custom-painted page, and the app runs borderless full screen on any resolution.
 
 ## Running
@@ -89,11 +89,11 @@ connected to a car.
 | Key | Action |
 | --- | --- |
 | `F1` / `F2` / `F3` / `F4` | Home / Diagnostics / Live Data / DTC Codes |
+| `F5` | Full System Scan |
 | Typing (Dictionary page) | Searches codes; `Backspace` deletes, `Delete` clears |
 | `F11` | Toggle full screen |
 | `Esc` | Close the danger alert, else leave full screen, else go back |
 | `Alt+Left`, `Backspace` | Back |
-| `Ctrl+D` | Toggle dark mode |
 | `Ctrl+Q` | Quit |
 
 ## Screens
@@ -103,6 +103,7 @@ connected to a car.
 | Home | `Pages/HomePage.cs` | Status card, quick tiles, live value strip |
 | Vehicle Health | `Pages/DiagnosticsPage.cs` | Health ring, per-system rows, animated Full Scan |
 | System detail | `Pages/SystemDetailPage.cs` | One module: its codes and its live readings |
+| Full System Scan | `Pages/FullScanPage.cs` | Built to match `design/full-system-scan.png`; see below |
 | Live Data | `Pages/LiveDataPage.cs` | Engine / Sensors / Fuel / Emission / Other tabs |
 | Live Data Graph | `Pages/LiveGraphPage.cs` | One parameter over 1, 5 or 10 minutes |
 | DTC Codes | `Pages/DtcCodesPage.cs` | Current / Pending / History, clear codes |
@@ -119,9 +120,16 @@ connected to a car.
 - `Ui/PageBase.cs` - every page paints into a design space **800 units high** and as wide as the
   window needs, so nothing is letterboxed or stretched. It also provides hit testing, hover states,
   wheel scrolling, the header bar, tabs, buttons and the confirmation dialog.
-- `Ui/Theme.cs` - light and dark palettes; changing `Theme.Dark` repaints the whole app.
-- `Ui/Draw.cs`, `Ui/Icons.cs`, `Ui/Charts.cs` - rounded cards, gauges, vector icons, line and bar charts.
-- `Ui/Sidebar.cs` - navigation rail; collapses to icons below 1180 px wide or via the hamburger.
+- `Ui/Theme.cs` - the Redline palette of the scan design (dark navy panels, red accent). There is
+  one dark palette; the old light theme and its `Ctrl+D` toggle are gone.
+- `Ui/UiFonts.cs` - Roboto Regular and Medium, embedded (`Assets/Fonts`, Apache 2.0) so every PC renders
+  the same; Japanese and Chinese text keeps the language's own font.
+- `Ui/Draw.cs`, `Ui/Icons.cs`, `Ui/Charts.cs` - cards, glowing buttons, gauges, vector icons, line and bar charts.
+- Shell layout follows the scan design on every page: a top bar (logo cell, back button, title over the
+  vehicle line, then the connection/adapter pill, EN/日本語/中文 switch, clock and status icons - drawn by
+  `PageBase.DrawHeader`) with the navigation rail under the logo.
+- `Ui/Sidebar.cs` - the logo cell and the navigation rail; collapses to icons below 1180 px wide or when
+  the logo is clicked.
 - `MainForm.cs` - shell, navigation stack, full screen handling, danger alerts, screen keep-alive.
 - `Services/Obd/` - the adapter driver: `ObdTransport` (COM port pipe), `RfcommObdTransport`
   (Bluetooth Classic pipe and pairing), `BleObdTransport` (Bluetooth LE GATT pipe),
@@ -132,6 +140,25 @@ connected to a car.
   of history per PID), `DtcStore` (fault codes and the alarm log), `DtcCatalog` (the code
   dictionary), `ConnectionService` (live/demo state), `Loc` (translations), `AppSettings` (persisted
   to `%AppData%\ObdCarDangerous\settings.json`) and `AppState` which ties them together.
+
+## Full System Scan screen
+
+`Pages/FullScanPage.cs` reproduces `design/full-system-scan.png`. The mock-up's artwork is used as
+raster, not redrawn as vectors: `tools/scan_assets.py` cuts it into `Assets/Scan/` -
+
+- `plate.png` - the whole screen with its text and moving parts painted out (car, panels, icons stay),
+- callout and card frames and icons for every module state (amber variants recoloured from the red ones),
+- the logo and a faded car used by the rail, the splash and the home screen,
+
+and measures every piece of text into `Pages/Scan/ScanText.g.cs` (position, baseline, Roboto size and
+horizontal squeeze), so live text lands on the mock-up's own baselines. Run the script again after
+changing the mock-up (`pip install numpy pillow opencv-python-headless`).
+
+The scan walks 21 modules (the seven on the first page of cards, fourteen more behind the arrow) and
+reports each against the fault codes read from the vehicle. Generic OBD2 cannot address individual
+modules, so per-module addresses, part numbers and response times are demo values, and the ABS wheel
+speeds are simulated around the vehicle speed in demo mode only. `--render` writes the screen as the
+mock-up captures it (`18-full-scan.png`, ABS at 72 %) and after a finished scan (`18b-full-scan-done.png`).
 
 ## Languages
 
@@ -156,7 +183,7 @@ is the single table describing each parameter, its range, units and which tab it
 Render every screen to PNG without opening a window:
 
 ```
-obd-car-dangerous.exe --render <folder> [width] [height] [--dark]
+obd-car-dangerous.exe --render <folder> [width] [height] [--lang 日本語]
 ```
 
 Check the ELM327 parsing against canned adapter answers (handshake, PID maths, DTC decoding,

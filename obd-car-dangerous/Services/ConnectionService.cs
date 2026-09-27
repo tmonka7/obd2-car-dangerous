@@ -208,7 +208,7 @@ namespace obd_car_dangerous.Services
     /// <summary>Vehicle identity: read from the ECU when connected, demo values otherwise.</summary>
     internal static class Vehicle
     {
-        private const string DemoVin = "JTDBR32ESLJ012345";
+        private const string DemoVin = "JTN4BK3BEKX3034567";
 
         public static string Vin => AppState.Connection.Link.Vin ?? (AppState.Connection.IsDemo ? DemoVin : "-");
 
@@ -218,7 +218,7 @@ namespace obd_car_dangerous.Services
         /// <summary>World manufacturer identifier, decoded from the VIN prefix.</summary>
         public static string Make => Vin.Length >= 3 ? MakeFromWmi(Vin[..3]) : "-";
 
-        public static string Model => AppState.Connection.IsDemo ? "Corolla" : "-";
+        public static string Model => AppState.Connection.IsDemo ? "Camry" : "-";
 
         public static string Year
         {
@@ -226,7 +226,7 @@ namespace obd_car_dangerous.Services
             {
                 if (AppState.Connection.IsDemo)
                 {
-                    return "2020";
+                    return "2021";
                 }
 
                 // Position 10 of a VIN encodes the model year.
@@ -241,7 +241,7 @@ namespace obd_car_dangerous.Services
             }
         }
 
-        public static string Engine => AppState.Connection.IsDemo ? "1.8 L 2ZR-FAE" : "-";
+        public static string Engine => AppState.Connection.IsDemo ? "2.5L Hybrid" : "-";
 
         public static string EcuVersion => AppState.Connection.Link.CalibrationId is { Length: > 0 } id
             ? id

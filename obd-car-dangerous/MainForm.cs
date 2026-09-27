@@ -50,18 +50,10 @@ namespace obd_car_dangerous
             AppState.Dtc.DangerRaised += (_, record) => ShowDanger(record.Code, record.Effect, record);
             AppState.Settings.Changed += (_, _) =>
             {
-                Theme.Dark = AppState.Settings.DarkMode;
                 Loc.Set(AppState.Settings.Language);
                 ApplyPowerRequest();
             };
             Loc.Changed += (_, _) => RefreshShell();
-            Theme.Changed += (_, _) =>
-            {
-                BackColor = Theme.PageTop;
-                host.BackColor = Theme.PageTop;
-                RefreshShell();
-            };
-
             faultTimer.Tick += async (_, _) =>
             {
                 if (AppState.Connection.IsLive)
@@ -144,6 +136,9 @@ namespace obd_car_dangerous
                 }
             }
 
+            // The scan screen brings its own navigation rail.
+            sidebar.Visible = page is not FullScanPage;
+
             page.Visible = true;
             page.BringToFront();
             page.OnEnter(argument);
@@ -166,7 +161,7 @@ namespace obd_car_dangerous
             "dtcdetail" => "dtc",
             "dictionary" => "dictionary",
             "graph" => "livedata",
-            "systemdetail" => "diagnostics",
+            "systemdetail" or "fullscan" => "diagnostics",
             "vehicleinfo" or "connection" or "about" => "settings",
             _ => key,
         };
@@ -183,6 +178,7 @@ namespace obd_car_dangerous
                 "home" => new HomePage(),
                 "diagnostics" => new DiagnosticsPage(),
                 "systemdetail" => new SystemDetailPage(),
+                "fullscan" => new FullScanPage(),
                 "livedata" => new LiveDataPage(),
                 "graph" => new LiveGraphPage(),
                 "dtc" => new DtcCodesPage(),
@@ -390,10 +386,6 @@ namespace obd_car_dangerous
                     Back();
                     return true;
 
-                case Keys.Control | Keys.D:
-                    AppState.Settings.Update(s => s.DarkMode = !s.DarkMode);
-                    return true;
-
                 case Keys.Control | Keys.Q:
                     Close();
                     return true;
@@ -412,6 +404,10 @@ namespace obd_car_dangerous
 
                 case Keys.F4:
                     Navigate("dtc");
+                    return true;
+
+                case Keys.F5:
+                    Navigate("fullscan");
                     return true;
             }
 

@@ -130,7 +130,7 @@ namespace obd_car_dangerous.Ui
             float visible = track.Height / (track.Height + ScrollMaxY);
             float thumbH = Math.Max(48f, track.Height * visible);
             float y = track.Y + (track.Height - thumbH) * (ScrollY / ScrollMaxY);
-            Draw.FillRounded(g, Theme.Dark ? Color.FromArgb(32, 62, 100) : Color.FromArgb(226, 233, 242), track, track.Width / 2f);
+            Draw.FillRounded(g, Theme.Track, track, track.Width / 2f);
             Draw.FillRounded(g, Draw.Alpha(Theme.Accent, 160), new RectangleF(track.X, y, track.Width, thumbH), track.Width / 2f);
         }
 
@@ -142,6 +142,11 @@ namespace obd_car_dangerous.Ui
         }
 
         protected bool IsHover(string id) => hoverId == id;
+
+        /// <summary>Region under the pointer and region held down, for pages that cache what they paint.</summary>
+        protected string? HoverId => hoverId;
+
+        protected string? PressedId => pressedId;
 
         protected bool IsPressed(string id) => pressedId == id;
 
@@ -232,66 +237,185 @@ namespace obd_car_dangerous.Ui
 
         // ---- shared chrome -----------------------------------------------
 
-        /// <summary>Draws the blue header bar and returns the Y where page content may start.</summary>
+        /// <summary>Height of the top bar; the rail's logo cell has the same height so the two read as one bar.</summary>
+        public const float TopBarHeight = 78f;
+
+        /// <summary>
+        /// Top bar of the design: back button, title with the vehicle line under it, and on the right the
+        /// connection pill, the language switch, the clock and the status icons. Returns where content starts.
+        /// </summary>
         protected float DrawHeader(Graphics g, string? subtitle = null)
         {
-            const float height = 78f;
-            using (var bar = new LinearGradientBrush(new RectangleF(0, 0, W, height + 1),
-                       Theme.ShellTop, Theme.ShellBottom, LinearGradientMode.Horizontal))
+            const float height = TopBarHeight;
+            using (var bar = new SolidBrush(Theme.ShellTop))
             {
                 g.FillRectangle(bar, 0, 0, W, height);
             }
 
-            float x = 26f;
+            using (var line = new Pen(Theme.ShellLine, 1f))
+            {
+                g.DrawLine(line, 0, height - 0.5f, W, height - 0.5f);
+            }
+
+            float x = 24f;
             if (ShowBack)
             {
-                var back = new RectangleF(18, 20, 40, 38);
-                Icons.Draw(g, "back", back, Hovered(Color.White, "hdr-back"), Theme.ShellTop);
-                Hit(new RectangleF(8, 10, 60, 58), () => Shell.Back(), "hdr-back");
-                x = 78f;
+                // Back: a chevron in a dark rounded square, as beside the design's title.
+                var back = new RectangleF(16, 17, 44, 44);
+                Draw.FillRounded(g, Hovered(Color.FromArgb(14, 22, 34), "hdr-back"), back, 11f);
+                Draw.StrokeRounded(g, Color.FromArgb(28, 40, 56), back, 11f, 1f);
+                using (var pen = new Pen(Color.FromArgb(230, 236, 244), 2.2f) { StartCap = LineCap.Round, EndCap = LineCap.Round, LineJoin = LineJoin.Round })
+                {
+                    g.DrawLines(pen, new[] { new PointF(back.X + 25, back.Y + 12), new PointF(back.X + 17, back.Y + 22), new PointF(back.X + 25, back.Y + 32) });
+                }
+
+                Hit(new RectangleF(8, 8, 60, 62), () => Shell.Back(), "hdr-back");
+                x = 76f;
             }
 
-            Draw.TextIn(g, Title, Draw.Font(30, FontStyle.Bold), Color.White,
-                new RectangleF(x, 0, W - x - 260, height), StringAlignment.Near, StringAlignment.Center, false);
+            float right = DrawStatusCluster(g, height);
+            float room = Math.Max(120f, right - 14 - x);
 
+            // Line one: the title, and a page's own status word after it.
+            Font titleFont = Draw.Font(24, FontStyle.Bold);
+            Draw.TextIn(g, Title, titleFont, Theme.Text, new RectangleF(x, 8, room, 36), StringAlignment.Near, StringAlignment.Center, false);
             if (subtitle is not null)
             {
-                SizeF size = Draw.Measure(g, Title, Draw.Font(30, FontStyle.Bold));
-                Draw.TextIn(g, subtitle, Draw.Font(17), Draw.Alpha(Color.White, 190),
-                    new RectangleF(x + size.Width + 18, 0, W - x - size.Width - 280, height),
-                    StringAlignment.Near, StringAlignment.Center, false);
+                float titleW = Math.Min(room, Draw.Measure(g, Title, titleFont).Width);
+                Draw.TextIn(g, subtitle, Draw.Font(15), Color.FromArgb(120, 200, 240),
+                    new RectangleF(x + titleW + 10, 8, Math.Max(0, room - titleW - 10), 38), StringAlignment.Near, StringAlignment.Center, false);
             }
 
-            DrawStatusCluster(g, height);
+            // Line two: the vehicle, then a divider and the VIN, as in the design.
+            Font lineFont = Draw.Font(15);
+            string car = string.Join("  ", new[]
+            {
+                string.Join(" ", new[] { Services.Vehicle.Make, Services.Vehicle.Model }.Where(s => s != "-")),
+                Services.Vehicle.Year, Services.Vehicle.Engine,
+            }.Where(s => s.Length > 0 && s != "-"));
+            float lx = x + 1;
+            if (car.Length > 0)
+            {
+                Draw.TextIn(g, car, lineFont, Color.FromArgb(187, 210, 232), new RectangleF(lx, 44, room, 26), StringAlignment.Near, StringAlignment.Center, false);
+                lx += Draw.Measure(g, car, lineFont).Width + 8;
+                using var divider = new Pen(Color.FromArgb(62, 80, 104), 1.2f);
+                g.DrawLine(divider, lx, 50, lx, 64);
+                lx += 10;
+            }
+
+            if (Services.Vehicle.Vin != "-" && lx < x + room - 60)
+            {
+                Draw.TextIn(g, $"VIN: {Services.Vehicle.Vin}", lineFont, Color.FromArgb(150, 198, 232),
+                    new RectangleF(lx, 44, x + room - lx, 26), StringAlignment.Near, StringAlignment.Center, false);
+            }
+
             return height;
         }
 
-        /// <summary>Clock, connection icon and battery drawn at the right edge of the header.</summary>
-        protected void DrawStatusCluster(Graphics g, float headerHeight)
+        /// <summary>
+        /// Right end of the top bar, drawn right to left: status icons, clock, language switch and the
+        /// connection pill. Returns the left edge of what it drew.
+        /// </summary>
+        protected float DrawStatusCluster(Graphics g, float headerHeight)
         {
-            float right = W - 24f;
-            Font font = Draw.Font(17, FontStyle.Bold);
-            string battery = "100%";
-            SizeF size = Draw.Measure(g, battery, font);
-            var mid = headerHeight / 2f;
+            float mid = headerHeight / 2f;
+            float right = W - 22f;
 
-            Draw.Text(g, battery, font, Draw.Alpha(Color.White, 225), right - size.Width, mid - size.Height / 2f);
-            right -= size.Width + 12;
+            Bitmap icons = Pages.Scan.ScanKit.Sprite("hdr-status");
+            float iconsH = 21f;
+            float iconsW = icons.Width * iconsH / icons.Height;
+            g.DrawImage(icons, new RectangleF(right - iconsW, mid - iconsH / 2f - 1, iconsW, iconsH));
+            right -= iconsW + 20;
 
-            var batteryBox = new RectangleF(right - 26, mid - 13, 26, 26);
-            Icons.Draw(g, "battery", batteryBox, Draw.Alpha(Color.White, 225), Theme.ShellTop);
-            right -= 36;
-
-            var linkBox = new RectangleF(right - 26, mid - 13, 26, 26);
-            Icons.Draw(g, Services.AppState.Connection.IsLive ? "bluetooth" : "chart", linkBox,
-                Services.AppState.Connection.IsLive ? Color.FromArgb(120, 230, 160)
-                    : Services.AppState.Connection.IsDemo ? Color.FromArgb(250, 205, 90)
-                    : Draw.Alpha(Color.White, 150), Theme.ShellTop);
-            right -= 44;
-
+            Font clockFont = Draw.Font(19);
             string clock = DateTime.Now.ToString("HH:mm");
-            SizeF clockSize = Draw.Measure(g, clock, font);
-            Draw.Text(g, clock, font, Draw.Alpha(Color.White, 225), right - clockSize.Width, mid - clockSize.Height / 2f);
+            SizeF clockSize = Draw.Measure(g, clock, clockFont);
+            Draw.Text(g, clock, clockFont, Color.FromArgb(234, 241, 247), right - clockSize.Width, mid - clockSize.Height / 2f);
+            right -= clockSize.Width + 22;
+
+            right = DrawLanguageSwitch(g, right, mid) - 16;
+
+            // Connection pill: status, then the adapter when there is room for it. Opens the connection settings.
+            Services.ConnectionService link = Services.AppState.Connection;
+            Color dot = link.IsLive ? Theme.Good : link.IsDemo ? Theme.Warn : Theme.Critical;
+            Font statusFont = Draw.Font(14, FontStyle.Bold);
+            Font adapterFont = Draw.Font(14);
+            string status = link.StatusText;
+            string adapter = link.Current.Name;
+            float statusW = Draw.Measure(g, status, statusFont).Width;
+            float adapterW = Math.Min(130f, Draw.Measure(g, adapter, adapterFont).Width);
+            bool showAdapter = W > 1100;
+            float pillW = 34 + statusW + (showAdapter ? 20 + 34 + adapterW : 0) + 10;
+            var pill = new RectangleF(right - pillW, mid - 16, pillW, 32);
+            Draw.FillRounded(g, Hovered(Color.FromArgb(10, 22, 30), "hdr-link"), pill, 12f);
+            Draw.StrokeRounded(g, Color.FromArgb(22, 38, 50), pill, 12f, 1f);
+            using (var glow = new SolidBrush(Color.FromArgb(50, dot)))
+            {
+                g.FillEllipse(glow, pill.X + 11, mid - 7, 14, 14);
+            }
+
+            using (var brush = new SolidBrush(dot))
+            {
+                g.FillEllipse(brush, pill.X + 13, mid - 5, 10, 10);
+            }
+
+            Draw.TextIn(g, status, statusFont, link.IsLive ? Color.FromArgb(22, 239, 183) : dot,
+                new RectangleF(pill.X + 30, pill.Y, statusW + 4, pill.Height), StringAlignment.Near, StringAlignment.Center, false);
+
+            if (showAdapter)
+            {
+                float ax = pill.X + 34 + statusW + 10;
+                using (var sep = new Pen(Color.FromArgb(32, 46, 62), 1f))
+                {
+                    g.DrawLine(sep, ax, pill.Y + 9, ax, pill.Bottom - 9);
+                }
+
+                Bitmap chip = Pages.Scan.ScanKit.Sprite("hdr-adapter");
+                g.DrawImage(chip, new RectangleF(ax + 11, mid - 7, 19, 14));
+                Draw.TextIn(g, adapter, adapterFont, Color.FromArgb(151, 180, 211),
+                    new RectangleF(ax + 36, pill.Y, adapterW + 4, pill.Height), StringAlignment.Near, StringAlignment.Center, false);
+            }
+
+            Hit(pill, () => Shell.Navigate("settings", "connection"), "hdr-link");
+            return pill.X;
+        }
+
+        private static readonly Font JapaneseLabel = new("Yu Gothic UI", 14f, FontStyle.Regular, GraphicsUnit.Pixel);
+        private static readonly Font ChineseLabel = new("Microsoft YaHei UI", 14f, FontStyle.Regular, GraphicsUnit.Pixel);
+
+        /// <summary>EN / 日本語 / 中文, the selected one in red. Returns its left edge.</summary>
+        private float DrawLanguageSwitch(Graphics g, float right, float mid)
+        {
+            string[] labels = { "EN", "日本語", "中文" };
+            float[] widths = { 40, 54, 48 };
+            int selected = Array.IndexOf(Services.Loc.Languages, Services.Loc.Language);
+            float x = right - widths.Sum() - 4;
+            float left = x;
+
+            for (int i = 0; i < labels.Length; i++)
+            {
+                var cell = new RectangleF(x, mid - 16, widths[i], 32);
+                string id = $"hdr-lang-{i}";
+                if (i == selected)
+                {
+                    Draw.GlowFill(g, cell, Theme.Accent, 8f);
+                }
+                else
+                {
+                    Draw.FillRounded(g, Hovered(Color.FromArgb(16, 24, 38), id), cell, 8f);
+                    Draw.StrokeRounded(g, Color.FromArgb(32, 44, 62), cell, 8f, 1f);
+                }
+
+                // Each label in its own script's font: Roboto has no Japanese or Chinese.
+                Font font = i == 0 ? Draw.Font(15, FontStyle.Bold) : i == 1 ? JapaneseLabel : ChineseLabel;
+                Draw.TextCentered(g, labels[i], font, i == selected ? Color.White : Color.FromArgb(206, 214, 227), cell);
+
+                int index = i;
+                Hit(cell, () => Services.AppState.Settings.Update(s => s.Language = Services.Loc.Languages[index]), id);
+                x += widths[i] + 2;
+            }
+
+            return left;
         }
 
         /// <summary>Pill shaped tab strip. Returns the bottom edge.</summary>
@@ -309,14 +433,17 @@ namespace obd_car_dangerous.Ui
                 var rect = new RectangleF(bounds.X + i * (tabWidth + gap), bounds.Y, tabWidth, bounds.Height);
                 string id = $"{idPrefix}{i}";
                 bool active = i == selected;
-                Color fill = active ? Theme.Accent : Theme.Card;
-                Draw.FillRounded(g, Hovered(fill, id), rect, 14f);
-                if (!active)
+                if (active)
                 {
-                    Draw.StrokeRounded(g, Theme.Border, rect, 14f, 1f);
+                    Draw.GlowFill(g, rect, Hovered(Theme.Accent, id), 10f);
+                }
+                else
+                {
+                    Draw.FillRounded(g, Hovered(Theme.Card, id), rect, 10f);
+                    Draw.StrokeRounded(g, Theme.Border, rect, 10f, 1f);
                 }
 
-                Draw.TextCentered(g, tabs[i], Draw.Font(21, FontStyle.Bold), active ? Color.White : Theme.TextSoft, rect);
+                Draw.TextCentered(g, tabs[i], Draw.Font(20, FontStyle.Bold), active ? Color.White : Theme.TextSoft, rect);
 
                 int index = i;
                 Hit(rect, () => onSelect(index), id);
@@ -328,21 +455,18 @@ namespace obd_car_dangerous.Ui
         /// <summary>Primary action button.</summary>
         protected void DrawButton(Graphics g, RectangleF bounds, string text, Color fill, Color textColor, Action onClick, string id, float radius = 14f)
         {
-            Draw.FillRounded(g, Hovered(fill, id), bounds, radius);
-            Draw.TextCentered(g, text, Draw.Font(22, FontStyle.Bold), textColor, bounds);
+            Draw.GlowFill(g, bounds, Hovered(fill, id), Math.Min(radius, 10f));
+            Draw.TextCentered(g, text, Draw.Font(21, FontStyle.Bold), textColor, bounds);
             Hit(bounds, onClick, id);
         }
 
         /// <summary>Outlined secondary button.</summary>
         protected void DrawGhostButton(Graphics g, RectangleF bounds, string text, Color color, Action onClick, string id, float radius = 14f)
         {
-            if (IsHover(id))
-            {
-                Draw.FillRounded(g, Draw.Alpha(color, 36), bounds, radius);
-            }
-
-            Draw.StrokeRounded(g, color, bounds, radius, 2f);
-            Draw.TextCentered(g, text, Draw.Font(22, FontStyle.Bold), color, bounds);
+            radius = Math.Min(radius, 10f);
+            Draw.FillRounded(g, IsHover(id) ? Draw.Alpha(color, 40) : Draw.Alpha(color, 14), bounds, radius);
+            Draw.StrokeRounded(g, Draw.Alpha(color, 200), bounds, radius, 1.5f);
+            Draw.TextCentered(g, text, Draw.Font(21, FontStyle.Bold), color, bounds);
             Hit(bounds, onClick, id);
         }
 
@@ -375,14 +499,13 @@ namespace obd_car_dangerous.Ui
             // Anything underneath stops responding while the dialog is up.
             regions.Clear();
 
-            using (var dim = new SolidBrush(Color.FromArgb(150, 4, 14, 30)))
+            using (var dim = new SolidBrush(Color.FromArgb(180, 0, 3, 8)))
             {
                 g.FillRectangle(dim, 0, 0, W, H);
             }
 
             var panel = new RectangleF((W - 620) / 2f, 210, 620, 330);
-            Draw.CardShadow(g, panel, 22f);
-            Draw.FillRounded(g, Theme.Card, panel, 22f);
+            Draw.Card(g, panel, 14f);
 
             Draw.TextIn(g, dialog.Title, Draw.Font(30, FontStyle.Bold), Theme.Text,
                 new RectangleF(panel.X + 36, panel.Y + 30, panel.Width - 72, 44), StringAlignment.Near, StringAlignment.Center, false);

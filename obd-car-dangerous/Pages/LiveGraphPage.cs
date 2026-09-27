@@ -60,7 +60,7 @@ namespace obd_car_dangerous.Pages
             // Dark plot panel, as in the design.
             var panel = new RectangleF(pad, chipRow.Bottom + 18, W - pad * 2, H - chipRow.Bottom - 18 - 96 - pad);
             Draw.CardShadow(g, panel, 20f);
-            Draw.GradientRounded(g, Color.FromArgb(14, 52, 102), Color.FromArgb(7, 28, 60), panel, 20f);
+            Draw.Card(g, panel, 14f);
 
             Pid selected = Telemetry.Find(pidKey);
             int samples = Ranges[range].Seconds * 1000 / Telemetry.TickMs;
@@ -83,7 +83,7 @@ namespace obd_car_dangerous.Pages
 
             string[] labels = BuildTimeLabels(Ranges[range].Seconds);
             Charts.Line(g, RectangleF.Inflate(panel, -12, -12), values, min, max,
-                Color.FromArgb(46, 230, 120), $"{Loc.Pid(selected.Key, selected.Label)} ({selected.Unit})", labels, darkPlot: true);
+                Theme.Accent, $"{Loc.Pid(selected.Key, selected.Label)} ({selected.Unit})", labels, darkPlot: true);
 
             DrawStats(g, panel, values, selected);
 
@@ -143,7 +143,7 @@ namespace obd_car_dangerous.Pages
             float x = panel.Right - 24 - w * stats.Length;
             foreach ((string label, float value) in stats)
             {
-                Draw.TextIn(g, label, Draw.Font(16), Color.FromArgb(150, 185, 220),
+                Draw.TextIn(g, label, Draw.Font(16), Theme.TextSoft,
                     new RectangleF(x, panel.Y + 12, w, 22), StringAlignment.Center, StringAlignment.Center, false);
                 Draw.TextIn(g, value.ToString(pid.Format), Draw.Font(24, FontStyle.Bold), Color.White,
                     new RectangleF(x, panel.Y + 32, w, 30), StringAlignment.Center, StringAlignment.Center, false);

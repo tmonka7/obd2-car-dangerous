@@ -8,7 +8,7 @@ namespace obd_car_dangerous.Ui
     /// <summary>Left navigation rail. Collapses to icons when the window gets narrow.</summary>
     internal sealed class Sidebar : PageBase
     {
-        public const float ExpandedWidth = 250f;
+        public const float ExpandedWidth = 226f;
         public const float CollapsedWidth = 92f;
 
         public static readonly NavItem[] Items =
@@ -34,54 +34,67 @@ namespace obd_car_dangerous.Ui
 
         protected override void Render(Graphics g)
         {
-            using (var brush = new LinearGradientBrush(new RectangleF(0, 0, Math.Max(1, W), H + 1),
+            // The top cell is the left end of the top bar, the same colour and hairline as the pages' bar.
+            const float top = PageBase.TopBarHeight;
+            using (var bar = new SolidBrush(Theme.ShellTop))
+            {
+                g.FillRectangle(bar, 0, 0, W, top);
+            }
+
+            using (var brush = new LinearGradientBrush(new RectangleF(0, top, Math.Max(1, W), H - top + 1),
                        Theme.ShellTop, Theme.ShellBottom, LinearGradientMode.Vertical))
             {
-                g.FillRectangle(brush, 0, 0, W, H);
+                g.FillRectangle(brush, 0, top, W, H - top);
+            }
+
+            using (var edge = new Pen(Theme.ShellLine, 1f))
+            {
+                g.DrawLine(edge, 0, top - 0.5f, W, top - 0.5f);
+                g.DrawLine(edge, W - 0.5f, 10, W - 0.5f, top - 10);
             }
 
             bool compact = Collapsed;
-            float pad = compact ? 16 : 18;
 
-            // Hamburger / logo row.
-            var toggle = new RectangleF(pad, 22, 46, 46);
-            Icons.Draw(g, compact ? "menu" : "close", toggle, Hovered(Draw.Alpha(Color.White, 220), "nav-toggle"), Theme.ShellTop);
-            Hit(new RectangleF(pad - 6, 16, 58, 58), () => ToggleRequested?.Invoke(), "nav-toggle");
-
-            if (!compact)
+            // The Redline logo, cut from the design; clicking it folds the rail to icons and back.
+            Bitmap logo = Pages.Scan.ScanKit.Sprite(compact ? "logo-mark" : "logo");
+            float logoH = compact ? 36f : 42f;
+            float logoW = Math.Min(W - 28, logo.Width * logoH / logo.Height);
+            logoH = logo.Height * logoW / logo.Width;
+            var logoBox = new RectangleF((W - logoW) / 2f, (top - logoH) / 2f, logoW, logoH);
+            g.DrawImage(logo, logoBox);
+            if (IsHover("nav-toggle"))
             {
-                Draw.TextIn(g, Services.Loc.T("nav.menu"), Draw.Font(19, FontStyle.Bold), Draw.Alpha(Color.White, 150),
-                    new RectangleF(pad + 58, 22, W - pad - 70, 46), StringAlignment.Near, StringAlignment.Center, false);
+                Draw.FillRounded(g, Color.FromArgb(14, 255, 255, 255), RectangleF.Inflate(logoBox, 8, 6), 10f);
             }
 
-            float y = 96;
-            float itemH = 56;
-            float gap = 6;
+            Hit(RectangleF.Inflate(logoBox, 8, 8), () => ToggleRequested?.Invoke(), "nav-toggle");
+
+            float y = top + 22;
+            float itemH = 62;
 
             foreach (NavItem item in Items)
             {
                 bool active = item.Key == Selected;
-                var rect = new RectangleF(compact ? 10 : 14, y, W - (compact ? 20 : 28), itemH);
+                var rect = new RectangleF(0, y, W - (compact ? 8 : 14), itemH - 4);
                 string id = $"nav-{item.Key}";
 
                 if (active)
                 {
-                    Draw.FillRounded(g, Theme.Accent, rect, 14f);
+                    DrawActive(g, rect);
                 }
                 else if (IsHover(id) || IsPressed(id))
                 {
-                    Draw.FillRounded(g, Draw.Alpha(Color.White, IsPressed(id) ? 46 : 28), rect, 14f);
+                    Draw.FillRounded(g, Color.FromArgb(IsPressed(id) ? 30 : 16, 255, 255, 255), RectangleF.FromLTRB(8, rect.Y, rect.Right, rect.Bottom), 10f);
                 }
 
-                Color knockout = active ? Theme.Accent : Theme.ShellTop;
-                var iconBox = new RectangleF(rect.X + (compact ? (rect.Width - 30) / 2f : 18), rect.Y + 13, 30, 30);
-                Icons.Draw(g, item.Icon, iconBox, active ? Color.White : Theme.ShellText, knockout);
+                var iconBox = new RectangleF(compact ? (W - 30) / 2f : 24, rect.Y + (rect.Height - 30) / 2f, 30, 30);
+                Icons.Draw(g, item.Icon, iconBox, active ? Color.White : Color.FromArgb(226, 233, 243), active ? Color.FromArgb(190, 14, 38) : Theme.ShellTop);
 
                 if (!compact)
                 {
-                    Draw.TextIn(g, Services.Loc.T(item.LabelKey), Draw.Font(21, active ? FontStyle.Bold : FontStyle.Regular),
+                    Draw.TextIn(g, Services.Loc.T(item.LabelKey), Draw.Font(19, active ? FontStyle.Bold : FontStyle.Regular),
                         active ? Color.White : Theme.ShellText,
-                        new RectangleF(rect.X + 62, rect.Y, rect.Width - 72, rect.Height),
+                        new RectangleF(70, rect.Y, rect.Width - 76, rect.Height),
                         StringAlignment.Near, StringAlignment.Center, false);
                 }
 
@@ -91,44 +104,49 @@ namespace obd_car_dangerous.Ui
                     if (count > 0)
                     {
                         var badge = compact
-                            ? new RectangleF(rect.Right - 28, rect.Y + 6, 24, 24)
-                            : new RectangleF(rect.Right - 44, rect.Y + 16, 30, 24);
-                        Draw.Pill(g, badge, Theme.Critical, count.ToString(), Draw.Font(16, FontStyle.Bold), Color.White);
+                            ? new RectangleF(rect.Right - 30, rect.Y + 6, 24, 22)
+                            : new RectangleF(rect.Right - 32, rect.Y + (rect.Height - 22) / 2f, 26, 22);
+                        Draw.GlowFill(g, badge, Theme.Accent, 11f);
+                        Draw.TextCentered(g, count.ToString(), Draw.Font(15, FontStyle.Bold), Color.White, badge);
                     }
+                }
+
+                // Hairline between rows, as in the design.
+                if (!active && item != Items[^1])
+                {
+                    using var line = new Pen(Color.FromArgb(18, 28, 40), 1f);
+                    g.DrawLine(line, compact ? 12 : 22, rect.Bottom + 2, rect.Right - 4, rect.Bottom + 2);
                 }
 
                 string key = item.Key;
                 Hit(rect, () => ItemSelected?.Invoke(key), id);
-                y += itemH + gap;
+                y += itemH;
             }
-
-            DrawFooter(g, compact);
         }
 
-        private void DrawFooter(Graphics g, bool compact)
+        /// <summary>Selected row: red glass running from a bright edge on the left into the rail.</summary>
+        private static void DrawActive(Graphics g, RectangleF rect)
         {
-            var box = new RectangleF(compact ? 10 : 14, H - 118, W - (compact ? 20 : 28), 96);
-            Draw.FillRounded(g, Draw.Alpha(Color.White, 22), box, 14f);
-
-            bool live = AppState.Connection.IsLive;
-            bool online = AppState.Connection.IsConnected;
-            Color dot = live ? Theme.Good : online ? Theme.Warn : Theme.Critical;
-            g.FillEllipse(new SolidBrush(dot), box.X + (compact ? box.Width / 2f - 7 : 18), box.Y + 20, 14, 14);
-
-            if (compact)
+            for (int i = 3; i >= 1; i--)
             {
-                Draw.TextIn(g, online ? "ON" : "OFF", Draw.Font(15, FontStyle.Bold), Draw.Alpha(Color.White, 210),
-                    new RectangleF(box.X, box.Y + 44, box.Width, 22), StringAlignment.Center, StringAlignment.Center, false);
-                Draw.TextIn(g, $"{AppState.HealthScore}", Draw.Font(19, FontStyle.Bold), Color.White,
-                    new RectangleF(box.X, box.Y + 66, box.Width, 24), StringAlignment.Center, StringAlignment.Center, false);
-                return;
+                Draw.FillRounded(g, Color.FromArgb(14, 255, 20, 50), RectangleF.FromLTRB(-20, rect.Y - i * 2, rect.Right + i * 2, rect.Bottom + i * 2), 12f + i);
             }
 
-            Draw.Text(g, AppState.Connection.StatusText, Draw.Font(19, FontStyle.Bold), Color.White, box.X + 40, box.Y + 14);
-            Draw.Text(g, $"{AppState.Connection.Current.Name} · {AppState.Connection.Current.Transport}",
-                Draw.Font(16), Draw.Alpha(Color.White, 170), box.X + 18, box.Y + 44);
-            Draw.Text(g, Loc.T("common.healthline", AppState.HealthScore, AppState.HealthLabel),
-                Draw.Font(16), Draw.Alpha(Color.White, 170), box.X + 18, box.Y + 66);
+            var body = RectangleF.FromLTRB(-20, rect.Y, rect.Right, rect.Bottom);
+            using (var brush = new LinearGradientBrush(new RectangleF(0, rect.Y, rect.Right, rect.Height),
+                       Color.FromArgb(232, 22, 48), Color.FromArgb(92, 8, 22), LinearGradientMode.Horizontal))
+            {
+                Draw.FillRounded(g, brush, body, 12f);
+            }
+
+            using (var sheen = new LinearGradientBrush(new RectangleF(0, rect.Y, rect.Right, rect.Height),
+                       Color.FromArgb(40, 255, 255, 255), Color.FromArgb(0, 255, 255, 255), LinearGradientMode.Vertical))
+            {
+                Draw.FillRounded(g, sheen, RectangleF.FromLTRB(-20, rect.Y, rect.Right, rect.Y + rect.Height / 2f), 12f);
+            }
+
+            using var edge = new SolidBrush(Color.FromArgb(255, 60, 86));
+            g.FillRectangle(edge, 0, rect.Y, 4, rect.Height);
         }
     }
 }

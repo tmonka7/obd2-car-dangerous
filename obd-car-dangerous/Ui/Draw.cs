@@ -26,7 +26,18 @@ namespace obd_car_dangerous.Ui
             var key = ((int)Math.Round(size * 4), style);
             if (!FontCache.TryGetValue(key, out Font? font))
             {
-                font = new Font(Services.Loc.FontFamily, size, style, GraphicsUnit.Pixel);
+                if (Services.Loc.IsCjk)
+                {
+                    font = new Font(Services.Loc.FontFamily, size, style, GraphicsUnit.Pixel);
+                }
+                else
+                {
+                    // Roboto, as the design: bold is set in Roboto Medium, the weight the design uses.
+                    FontFamily family = style.HasFlag(FontStyle.Bold) ? UiFonts.Medium : UiFonts.Regular;
+                    FontStyle rest = (style & ~FontStyle.Bold) | UiFonts.StyleFor(family);
+                    font = new Font(family, size, rest, GraphicsUnit.Pixel);
+                }
+
                 FontCache[key] = font;
             }
 
@@ -93,15 +104,34 @@ namespace obd_car_dangerous.Ui
             }
         }
 
+        /// <summary>Panel as the design draws it: dark fill, a hairline border and a faint light along the top.</summary>
         public static void Card(Graphics g, RectangleF bounds, float radius = 18f, Color? fill = null, bool shadow = true)
         {
+            radius = Math.Min(radius, 14f);
             if (shadow)
             {
                 CardShadow(g, bounds, radius);
             }
 
-            FillRounded(g, fill ?? Theme.Card, bounds, radius);
+            Color body = fill ?? Theme.Card;
+            using (var brush = new LinearGradientBrush(RectangleF.Inflate(bounds, 0, 1), Lerp(body, Color.FromArgb(34, 48, 68), 0.25f), body, LinearGradientMode.Vertical))
+            {
+                FillRounded(g, brush, bounds, radius);
+            }
+
             StrokeRounded(g, Theme.Border, bounds, radius, 1f);
+        }
+
+        /// <summary>Red button fill with the soft glow of the design's selected controls.</summary>
+        public static void GlowFill(Graphics g, RectangleF bounds, Color color, float radius)
+        {
+            for (int i = 3; i >= 1; i--)
+            {
+                FillRounded(g, Color.FromArgb(16, color), RectangleF.Inflate(bounds, i * 2f, i * 2f), radius + i * 2f);
+            }
+
+            using var brush = new LinearGradientBrush(RectangleF.Inflate(bounds, 0, 1), Lerp(color, Color.White, 0.08f), Lerp(color, Color.Black, 0.12f), LinearGradientMode.Vertical);
+            FillRounded(g, brush, bounds, radius);
         }
 
         public static void Text(Graphics g, string text, Font font, Color color, float x, float y)
@@ -141,7 +171,7 @@ namespace obd_car_dangerous.Ui
         public static void ArcGauge(Graphics g, RectangleF bounds, float fraction, Color color, float thickness)
         {
             fraction = Math.Clamp(fraction, 0f, 1f);
-            using var track = new Pen(Theme.Dark ? Color.FromArgb(46, 78, 118) : Color.FromArgb(225, 232, 241), thickness)
+            using var track = new Pen(Theme.Track, thickness)
             {
                 StartCap = LineCap.Round,
                 EndCap = LineCap.Round,
@@ -159,7 +189,7 @@ namespace obd_car_dangerous.Ui
         public static void RingGauge(Graphics g, RectangleF bounds, float fraction, Color from, Color to, float thickness)
         {
             fraction = Math.Clamp(fraction, 0f, 1f);
-            using var track = new Pen(Theme.Dark ? Color.FromArgb(28, 58, 95) : Color.FromArgb(226, 234, 244), thickness)
+            using var track = new Pen(Theme.Track, thickness)
             {
                 StartCap = LineCap.Round,
                 EndCap = LineCap.Round,
@@ -253,7 +283,7 @@ namespace obd_car_dangerous.Ui
         /// <summary>Rounded on/off switch.</summary>
         public static void ToggleSwitch(Graphics g, RectangleF bounds, bool on)
         {
-            Color track = on ? Theme.Accent : (Theme.Dark ? Color.FromArgb(52, 78, 112) : Color.FromArgb(206, 214, 226));
+            Color track = on ? Theme.Accent : Color.FromArgb(40, 54, 74);
             FillRounded(g, track, bounds, bounds.Height / 2f);
             float pad = bounds.Height * 0.09f;
             float d = bounds.Height - pad * 2;

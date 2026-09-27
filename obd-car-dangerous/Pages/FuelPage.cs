@@ -69,7 +69,7 @@ namespace obd_car_dangerous.Pages
             Draw.Text(g, $"{t.FuelLevel:0}%", Draw.Font(52, FontStyle.Bold), Theme.Text, levelIcon.Right + 24, right.Y + 52);
 
             var bar = new RectangleF(levelIcon.Right + 24, right.Bottom - 46, right.Width - (levelIcon.Right - right.X) - 56, 18);
-            Draw.FillRounded(g, Theme.Dark ? Color.FromArgb(34, 62, 98) : Color.FromArgb(230, 237, 245), bar, 9f);
+            Draw.FillRounded(g, Theme.Track, bar, 9f);
             Draw.FillRounded(g, levelColor, new RectangleF(bar.X, bar.Y, Math.Max(12f, bar.Width * t.FuelLevel / 100f), bar.Height), 9f);
 
             float range = t.AverageConsumption > 0.5f ? t.FuelLevel / 100f * 50f / t.AverageConsumption * 100f : 0;

@@ -6,15 +6,14 @@ namespace obd_car_dangerous
 {
     /// <summary>
     /// Developer helper: renders every screen to PNG without showing a window.
-    /// Run "obd-car-dangerous.exe --render &lt;folder&gt; [width] [height]" to check the layouts.
+    /// Run "obd-car-dangerous.exe --render &lt;folder&gt; [width] [height] [--lang 日本語]" to check the layouts.
     /// </summary>
     internal static class PageRenderer
     {
-        public static void RenderAll(string folder, int width, int height, bool dark)
+        public static void RenderAll(string folder, int width, int height, string? language = null)
         {
             Directory.CreateDirectory(folder);
-            Theme.Dark = dark;
-            Loc.Set(AppState.Settings.Language);
+            Loc.Set(language ?? AppState.Settings.Language);
             AppState.Connection.EnterDemo();
             AppState.Telemetry.Warmup(900);
 
@@ -41,6 +40,8 @@ namespace obd_car_dangerous
                 ("15-vehicle-info", new SettingsPage(), "vehicle"),
                 ("16-about", new SettingsPage(), "about"),
                 ("17-system-detail", new SystemDetailPage(), "Engine"),
+                ("18-full-scan", new FullScanPage(), "preview"),
+                ("18b-full-scan-done", new FullScanPage(), "preview-done"),
             };
 
             var sidebar = new Sidebar { Shell = shell };
@@ -48,7 +49,8 @@ namespace obd_car_dangerous
 
             foreach ((string name, PageBase page, object? argument) in screens)
             {
-                bool overlay = page is DangerOverlay;
+                // Full screen pages: the danger alert, and the scan screen with its own rail.
+                bool overlay = page is DangerOverlay or FullScanPage;
                 int pageWidth = overlay ? width : width - railWidth;
 
                 page.Shell = shell;

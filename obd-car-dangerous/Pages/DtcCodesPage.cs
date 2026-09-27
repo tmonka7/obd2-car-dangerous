@@ -75,7 +75,7 @@ namespace obd_car_dangerous.Pages
                 }
                 else
                 {
-                    Draw.FillRounded(g, Theme.Dark ? Color.FromArgb(28, 52, 84) : Color.FromArgb(226, 233, 242), button, 16f);
+                    Draw.FillRounded(g, Theme.CardAlt, button, 10f);
                     Draw.TextCentered(g, Loc.T("dtc.nothing"), Draw.Font(22, FontStyle.Bold), Theme.TextSoft, button);
                 }
             }
@@ -136,7 +136,7 @@ namespace obd_car_dangerous.Pages
             Draw.TextIn(g, record.Code, Draw.Font(27, FontStyle.Bold), Theme.Text,
                 new RectangleF(badge.Right + 22, row.Y, 150, row.Height), StringAlignment.Near, StringAlignment.Center, false);
 
-            Draw.TextIn(g, record.Description, Draw.Font(21), Theme.Accent,
+            Draw.TextIn(g, record.Description, Draw.Font(21), Theme.Info,
                 new RectangleF(badge.Right + 180, row.Y + 16, row.Width - 520, row.Height - 32), StringAlignment.Near, StringAlignment.Center);
 
             Draw.TextIn(g, $"{Loc.Severity(record.Severity)} · {Loc.SystemName(record.System)}", Draw.Font(17, FontStyle.Bold), Theme.Severity(record.Severity),

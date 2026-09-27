@@ -137,7 +137,7 @@ namespace obd_car_dangerous.Pages
                     new RectangleF(row.X + row.Width * 0.5f, row.Y, row.Width * 0.5f, rowH * 0.55f), StringAlignment.Far, StringAlignment.Center, false);
 
                 var bar = new RectangleF(row.X, row.Y + rowH * 0.62f, row.Width, 9);
-                Draw.FillRounded(g, Theme.Dark ? Color.FromArgb(34, 62, 98) : Color.FromArgb(232, 238, 246), bar, 4.5f);
+                Draw.FillRounded(g, Theme.Track, bar, 4.5f);
                 Draw.FillRounded(g, fraction > 0.85f ? Theme.Warn : Theme.Accent,
                     new RectangleF(bar.X, bar.Y, Math.Max(8f, bar.Width * fraction), bar.Height), 4.5f);
 

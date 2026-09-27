@@ -20,8 +20,6 @@ namespace obd_car_dangerous.Services
 
         public bool AlertSound { get; set; } = true;
 
-        public bool DarkMode { get; set; }
-
         public string Language { get; set; } = "English";
 
         public int ScreenTimeoutMinutes { get; set; } = 5;

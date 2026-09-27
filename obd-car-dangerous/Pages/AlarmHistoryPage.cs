@@ -133,7 +133,7 @@ namespace obd_car_dangerous.Pages
             Draw.TextIn(g, entry.Code, Draw.Font(21, FontStyle.Bold), Theme.Text,
                 new RectangleF(row.X + 176, row.Y, 120, row.Height), StringAlignment.Near, StringAlignment.Center, false);
 
-            Draw.TextIn(g, entry.Description, Draw.Font(20), Theme.Accent,
+            Draw.TextIn(g, entry.Description, Draw.Font(20), Theme.Info,
                 new RectangleF(row.X + 306, row.Y, row.Width - 460, row.Height), StringAlignment.Near, StringAlignment.Center, false);
 
             var pill = new RectangleF(row.Right - 140, row.Y + (row.Height - 34) / 2f, 122, 34);

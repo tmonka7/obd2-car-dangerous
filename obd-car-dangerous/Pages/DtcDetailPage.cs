@@ -60,7 +60,7 @@ namespace obd_car_dangerous.Pages
             float valueW = card.Width * 0.54f - labelW;
             float y = card.Y + 112;
 
-            y = Row(g, Loc.T("detail.description"), record.Description, Theme.Accent, left, valueX, valueW, y, labelW);
+            y = Row(g, Loc.T("detail.description"), record.Description, Theme.Info, left, valueX, valueW, y, labelW);
             y = Row(g, Loc.T("detail.status"), record.Status == DtcStatus.History ? Loc.T("detail.cleared") : Loc.Status(record.Status), Theme.Text, left, valueX, valueW, y, labelW);
             y = Row(g, Loc.T("detail.severity"), Loc.Severity(record.Severity), severity, left, valueX, valueW, y, labelW);
             y = Row(g, Loc.T("detail.system"), Loc.SystemName(record.System), Theme.Text, left, valueX, valueW, y, labelW);

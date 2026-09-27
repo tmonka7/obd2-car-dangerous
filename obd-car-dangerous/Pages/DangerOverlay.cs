@@ -109,7 +109,7 @@ namespace obd_car_dangerous.Pages
                 }
             }, "danger-details", 18f);
 
-            DrawButton(g, clear, Loc.T(record is null ? "danger.dismiss" : "danger.clear"), Hovered(Color.FromArgb(24, 86, 160), "danger-clear"), Color.White, () =>
+            DrawButton(g, clear, Loc.T(record is null ? "danger.dismiss" : "danger.clear"), Hovered(Color.FromArgb(34, 46, 64), "danger-clear"), Color.White, () =>
             {
                 if (record is not null)
                 {

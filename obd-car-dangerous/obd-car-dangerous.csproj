@@ -15,4 +15,10 @@
     <PackageReference Include="System.IO.Ports" Version="8.0.0" />
   </ItemGroup>
 
+  <!-- Raster pieces of the Full System Scan screen (tools/scan_assets.py) and the Roboto faces it is set in. -->
+  <ItemGroup>
+    <EmbeddedResource Include="Assets\Scan\*.png" LogicalName="Scan.%(Filename)%(Extension)" />
+    <EmbeddedResource Include="Assets\Fonts\*.ttf" LogicalName="Fonts.%(Filename)%(Extension)" />
+  </ItemGroup>
+
 </Project>

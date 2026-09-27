@@ -9,14 +9,14 @@ namespace obd_car_dangerous.Ui
         public static void Line(Graphics g, RectangleF bounds, float[] values, float min, float max,
             Color stroke, string title, string[] xLabels, bool darkPlot = false)
         {
-            Color axis = darkPlot ? Color.FromArgb(150, 180, 215) : Theme.TextSoft;
-            Color grid = darkPlot ? Color.FromArgb(40, 74, 120) : Color.FromArgb(232, 238, 246);
+            Color axis = Theme.TextSoft;
+            Color grid = Color.FromArgb(26, 38, 54);
 
             var plot = new RectangleF(bounds.X + 74, bounds.Y + 62, bounds.Width - 96, bounds.Height - 110);
 
             if (!string.IsNullOrEmpty(title))
             {
-                Draw.Text(g, title, Draw.Font(20, FontStyle.Bold), darkPlot ? Color.White : Theme.Text, bounds.X + 12, bounds.Y + 8);
+                Draw.Text(g, title, Draw.Font(20, FontStyle.Bold), Theme.Text, bounds.X + 12, bounds.Y + 8);
             }
 
             // Horizontal grid and Y labels.
@@ -55,11 +55,17 @@ namespace obd_car_dangerous.Ui
                     fill.CloseFigure();
                     using var brush = new LinearGradientBrush(
                         new RectangleF(plot.X, plot.Y, Math.Max(1, plot.Width), Math.Max(1, plot.Height)),
-                        Draw.Alpha(stroke, darkPlot ? 110 : 70), Draw.Alpha(stroke, 0), LinearGradientMode.Vertical);
+                        Draw.Alpha(stroke, 70), Draw.Alpha(stroke, 0), LinearGradientMode.Vertical);
                     g.FillPath(brush, fill);
                 }
 
-                using var pen = new Pen(stroke, 3f) { LineJoin = LineJoin.Round, StartCap = LineCap.Round, EndCap = LineCap.Round };
+                // The design's traces glow: a wide faint stroke under a thin bright one.
+                using (var halo = new Pen(Draw.Alpha(stroke, 50), 8f) { LineJoin = LineJoin.Round, StartCap = LineCap.Round, EndCap = LineCap.Round })
+                {
+                    g.DrawPath(halo, path);
+                }
+
+                using var pen = new Pen(stroke, 2.4f) { LineJoin = LineJoin.Round, StartCap = LineCap.Round, EndCap = LineCap.Round };
                 g.DrawPath(pen, path);
 
                 using var dot = new SolidBrush(stroke);
@@ -89,7 +95,7 @@ namespace obd_car_dangerous.Ui
                 Draw.Text(g, title, Draw.Font(20, FontStyle.Bold), Theme.Text, bounds.X + 12, bounds.Y + 10);
             }
 
-            using (var gridPen = new Pen(Theme.Dark ? Color.FromArgb(40, 74, 120) : Color.FromArgb(232, 238, 246), 1f))
+            using (var gridPen = new Pen(Color.FromArgb(26, 38, 54), 1f))
             {
                 for (int i = 0; i <= 2; i++)
                 {
@@ -113,7 +119,8 @@ namespace obd_car_dangerous.Ui
                 float t = Math.Clamp(values[i] / Math.Max(0.0001f, max), 0f, 1f);
                 float h = Math.Max(4f, plot.Height * t);
                 var rect = new RectangleF(plot.X + slot * i + (slot - barWidth) / 2f, plot.Bottom - h, barWidth, h);
-                Draw.GradientRounded(g, Draw.Lerp(color, Color.White, 0.25f), color, rect, 8f);
+                Draw.FillRounded(g, Draw.Alpha(color, 30), RectangleF.Inflate(rect, 3, 3), 10f);
+                Draw.GradientRounded(g, Draw.Lerp(color, Color.White, 0.18f), Draw.Lerp(color, Color.Black, 0.35f), rect, 6f);
 
                 if (i < labels.Length)
                 {

@@ -287,10 +287,10 @@ namespace obd_car_dangerous.Pages
 
         private static Color CategoryColor(char letter) => letter switch
         {
-            'P' => Theme.Accent,
+            'P' => Theme.Critical,
             'B' => Theme.Violet,
             'C' => Theme.Orange,
-            _ => Color.FromArgb(0, 176, 185),
+            _ => Theme.Good,
         };
 
         protected override void Dispose(bool disposing)

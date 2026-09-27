@@ -64,10 +64,11 @@ namespace obd_car_dangerous
                 string folder = args.Length > 1 ? args[1] : "screens";
                 int width = args.Length > 2 ? int.Parse(args[2]) : 1920;
                 int height = args.Length > 3 ? int.Parse(args[3]) : 1080;
-                bool dark = args.Contains("--dark");
+                int lang = Array.IndexOf(args, "--lang");
+                string? language = lang >= 0 && lang + 1 < args.Length ? args[lang + 1] : null;
                 try
                 {
-                    PageRenderer.RenderAll(folder, width, height, dark);
+                    PageRenderer.RenderAll(folder, width, height, language);
                 }
                 catch (Exception ex)
                 {

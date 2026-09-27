@@ -93,7 +93,7 @@ namespace obd_car_dangerous.Pages
 
                 if (active)
                 {
-                    Draw.FillRounded(g, Theme.Accent, row, 13f);
+                    Draw.GlowFill(g, row, Theme.Accent, 10f);
                 }
                 else if (IsHover(id))
                 {
@@ -141,7 +141,7 @@ namespace obd_car_dangerous.Pages
         private void ToggleRow(Graphics g, RectangleF bounds, string label, string hint, bool value, Action<bool> set, string id)
         {
             RectangleF row = NextRow(bounds);
-            Draw.FillRounded(g, IsHover(id) ? Theme.CardAlt : Draw.Alpha(Theme.CardAlt, Theme.Dark ? 255 : 140), row, 13f);
+            Draw.FillRounded(g, IsHover(id) ? Draw.Lerp(Theme.CardAlt, Color.White, 0.04f) : Theme.CardAlt, row, 13f);
 
             Draw.TextIn(g, label, Draw.Font(22), Theme.Text,
                 new RectangleF(row.X + 20, row.Y + (hint.Length > 0 ? 8 : 0), row.Width * 0.6f, hint.Length > 0 ? 32 : row.Height),
@@ -161,11 +161,11 @@ namespace obd_car_dangerous.Pages
         private void ValueRow(Graphics g, RectangleF bounds, string label, string value, Action onClick, string id)
         {
             RectangleF row = NextRow(bounds);
-            Draw.FillRounded(g, IsHover(id) ? Theme.CardAlt : Draw.Alpha(Theme.CardAlt, Theme.Dark ? 255 : 140), row, 13f);
+            Draw.FillRounded(g, IsHover(id) ? Draw.Lerp(Theme.CardAlt, Color.White, 0.04f) : Theme.CardAlt, row, 13f);
 
             Draw.TextIn(g, label, Draw.Font(22), Theme.Text,
                 new RectangleF(row.X + 20, row.Y, row.Width * 0.5f, row.Height), StringAlignment.Near, StringAlignment.Center, false);
-            Draw.TextIn(g, value, Draw.Font(22, FontStyle.Bold), Theme.Accent,
+            Draw.TextIn(g, value, Draw.Font(22, FontStyle.Bold), Theme.Info,
                 new RectangleF(row.X + row.Width * 0.5f, row.Y, row.Width * 0.5f - 46, row.Height), StringAlignment.Far, StringAlignment.Center, false);
             Draw.Chevron(g, new PointF(row.Right - 26, row.Y + row.Height / 2f), 10f, Theme.TextSoft);
 
@@ -175,7 +175,7 @@ namespace obd_car_dangerous.Pages
         private void StepperRow(Graphics g, RectangleF bounds, string label, string value, Action minus, Action plus, string id)
         {
             RectangleF row = NextRow(bounds);
-            Draw.FillRounded(g, Draw.Alpha(Theme.CardAlt, Theme.Dark ? 255 : 140), row, 13f);
+            Draw.FillRounded(g, Theme.CardAlt, row, 13f);
 
             Draw.TextIn(g, label, Draw.Font(22), Theme.Text,
                 new RectangleF(row.X + 20, row.Y, row.Width * 0.5f, row.Height), StringAlignment.Near, StringAlignment.Center, false);
@@ -208,9 +208,6 @@ namespace obd_car_dangerous.Pages
             ToggleRow(g, bounds, Loc.T("set.alertsound"), Loc.T("set.alertsound.hint"), s.AlertSound,
                 value => s.Update(x => x.AlertSound = value), "set-sound");
 
-            ToggleRow(g, bounds, Loc.T("set.darkmode"), Loc.T("set.darkmode.hint"), s.DarkMode,
-                value => s.Update(x => x.DarkMode = value), "set-dark");
-
             ToggleRow(g, bounds, Loc.T("set.keepscreen"), Loc.T("set.keepscreen.hint"), s.KeepScreenOn,
                 value => s.Update(x => x.KeepScreenOn = value), "set-keep");
 
@@ -241,7 +238,7 @@ namespace obd_car_dangerous.Pages
             SectionTitle(g, bounds, Loc.T("set.connection"));
 
             var hero = new RectangleF(bounds.X, rowY, bounds.Width, 250);
-            Draw.FillRounded(g, Draw.Alpha(Theme.CardAlt, Theme.Dark ? 255 : 150), hero, 18f);
+            Draw.FillRounded(g, Theme.CardAlt, hero, 18f);
 
             bool connected = link.IsConnected;
             bool live = link.IsLive;
@@ -321,7 +318,7 @@ namespace obd_car_dangerous.Pages
                 string id = $"adapter-{endpoint.Address}";
                 bool current = endpoint.Address == link.Current.Address;
                 bool activeNow = current && connected;
-                Draw.FillRounded(g, IsHover(id) ? Theme.CardAlt : Draw.Alpha(Theme.CardAlt, Theme.Dark ? 255 : 140), row, 12f);
+                Draw.FillRounded(g, IsHover(id) ? Draw.Lerp(Theme.CardAlt, Color.White, 0.04f) : Theme.CardAlt, row, 12f);
 
                 AdapterProfile profile = endpoint.Profile;
                 bool usable = profile.SpeaksElm327;
@@ -450,7 +447,6 @@ namespace obd_car_dangerous.Pages
                     {
                         x.AutoConnect = defaults.AutoConnect;
                         x.AlertSound = defaults.AlertSound;
-                        x.DarkMode = defaults.DarkMode;
                         x.KeepScreenOn = defaults.KeepScreenOn;
                         x.Language = defaults.Language;
                         x.ScreenTimeoutMinutes = defaults.ScreenTimeoutMinutes;
@@ -474,7 +470,7 @@ namespace obd_car_dangerous.Pages
             SectionTitle(g, bounds, Loc.T("vehicle.title"), Loc.T("vehicle.subtitle"));
 
             var card = new RectangleF(bounds.X, rowY, bounds.Width, 210);
-            Draw.FillRounded(g, Draw.Alpha(Theme.CardAlt, Theme.Dark ? 255 : 150), card, 16f);
+            Draw.FillRounded(g, Theme.CardAlt, card, 16f);
 
             var iconBox = new RectangleF(card.X + 28, card.Y + 52, 120, 104);
             Icons.Draw(g, "car", iconBox, Theme.Accent, Theme.CardAlt);
@@ -531,7 +527,7 @@ namespace obd_car_dangerous.Pages
             SectionTitle(g, bounds, Loc.T("set.about"));
 
             var card = new RectangleF(bounds.X, rowY, bounds.Width, 190);
-            Draw.FillRounded(g, Draw.Alpha(Theme.CardAlt, Theme.Dark ? 255 : 150), card, 16f);
+            Draw.FillRounded(g, Theme.CardAlt, card, 16f);
 
             var logo = new RectangleF(card.X + 30, card.Y + 42, 108, 108);
             Icons.Draw(g, "car", logo, Theme.Accent, Theme.CardAlt);
