@@ -19,6 +19,17 @@ namespace obd_car_dangerous.Pages
         private const float ScreenW = 1464f;
         private const float ScreenH = 950f;
 
+        // A screen wider than the mock-up (16:9 such as 1366 x 768) gets its extra width where the mock-up
+        // is flat background, one pixel column repeated, so nothing drawn is ever stretched:
+        // the top bar between the VIN and the connection pill, both sides of the car panel, and the right
+        // panel between its labels and its values. Below BandSplit the car panel and right panel columns
+        // apply, above it the top bar's. Mock-up x of each column.
+        private const float StretchTop = 878f;
+        private const float StretchLeft = 223f;
+        private const float StretchRight = 1152f;
+        private const float StretchArea = 1308f;
+        private const int BandSplit = 78;
+
         private static readonly (string Key, string Nav, object? Argument, float Y)[] NavRows =
         {
             ("scan.nav.home", "home", null, 148),
@@ -71,6 +82,7 @@ namespace obd_car_dangerous.Pages
         };
 
         private Bitmap? plate;
+        private Bitmap? widePlate;
         private Bitmap? layer;
         private string layerKey = string.Empty;
 
@@ -83,6 +95,15 @@ namespace obd_car_dangerous.Pages
         private float k = 1f;
         private float ox;
         private float oy;
+
+        // Extra mock-up width and how it is shared: each side of the car panel, then the right panel.
+        private int extra;
+        private int growLeft;
+        private int growRight;
+        private int growArea;
+
+        /// <summary>Horizontal shift of the section being drawn, in mock-up units.</summary>
+        private float dx;
 
         public FullScanPage()
         {
@@ -124,7 +145,29 @@ namespace obd_car_dangerous.Pages
         // ---- coordinates ------------------------------------------------------------------------
 
         private RectangleF Map(RectangleF r) =>
-            new(ox + (r.X - ScreenX) * k, oy + (r.Y - ScreenY) * k, r.Width * k, r.Height * k);
+            new(ox + (r.X + dx - ScreenX) * k, oy + (r.Y - ScreenY) * k, r.Width * k, r.Height * k);
+
+        /// <summary>Draws a part of the screen moved right by <paramref name="shift"/> mock-up units.</summary>
+        private void Shifted(Graphics g, float shift, Action draw)
+        {
+            float old = dx;
+            GraphicsState state = g.Save();
+            g.TranslateTransform(shift - old, 0);
+            dx = shift;
+            try
+            {
+                draw();
+            }
+            finally
+            {
+                dx = old;
+                g.Restore(state);
+            }
+        }
+
+        /// <summary>A text spec moved right: its left edge by <paramref name="left"/>, its right edge by <paramref name="right"/>.</summary>
+        private static TextSpec Nudge(TextSpec spec, float left, float right) =>
+            spec with { X = spec.X + left, Right = spec.Right + right, Center = spec.Center + (left + right) / 2f };
 
         private void HitAt(RectangleF mock, Action onClick, string id)
         {
@@ -140,8 +183,19 @@ namespace obd_car_dangerous.Pages
 
         protected override void Render(Graphics g)
         {
-            k = Math.Min(W / ScreenW, H / ScreenH);
-            ox = (W - ScreenW * k) / 2f;
+            // Fit the height; a wider screen gets extra width inside the layout, a narrower one margins.
+            k = H / ScreenH;
+            extra = (int)Math.Floor(W / k - ScreenW);
+            if (extra < 0)
+            {
+                k = Math.Min(W / ScreenW, H / ScreenH);
+                extra = 0;
+            }
+
+            growLeft = (int)Math.Round(extra * 0.3f);
+            growRight = growLeft;
+            growArea = extra - growLeft - growRight;
+            ox = (W - (ScreenW + extra) * k) / 2f;
             oy = (H - ScreenH * k) / 2f;
 
             string key = LayerKey();
@@ -206,23 +260,26 @@ namespace obd_car_dangerous.Pages
 
             DrawTopBar(g);
             DrawRail(g);
-            DrawScanHeader(g);
-            DrawCallouts(g);
-            DrawLegend(g);
-            DrawAreaPanel(g);
+            Shifted(g, growLeft, () =>
+            {
+                DrawScanHeader(g);
+                DrawCallouts(g);
+                DrawLegend(g);
+            });
+            Shifted(g, growLeft + growRight, () => DrawAreaPanel(g));
             DrawCards(g);
 
             g.Restore(state);
         }
 
         /// <summary>
-        /// The plate is scaled once per window size and then copied pixel for pixel, centred; a window of
-        /// another shape gets the screen colour in the margins.
+        /// The plate is widened and scaled once per window size and then copied pixel for pixel, centred;
+        /// a window narrower than the mock-up gets the screen colour in the margins.
         /// </summary>
         private void DrawPlate(Graphics g)
         {
             float pixels = S * k;
-            var size = new Size(Math.Max(1, (int)Math.Round(ScreenW * pixels)), Math.Max(1, (int)Math.Round(ScreenH * pixels)));
+            var size = new Size(Math.Max(1, (int)Math.Round((ScreenW + extra) * pixels)), Math.Max(1, (int)Math.Round(ScreenH * pixels)));
             if (plate is null || plate.Size != size)
             {
                 plate?.Dispose();
@@ -233,7 +290,7 @@ namespace obd_car_dangerous.Pages
                 pg.CompositingMode = CompositingMode.SourceCopy;
                 using var attributes = new System.Drawing.Imaging.ImageAttributes();
                 attributes.SetWrapMode(WrapMode.TileFlipXY);
-                Bitmap source = ScanKit.Sprite("plate");
+                Bitmap source = WidePlate();
                 pg.DrawImage(source, new Rectangle(0, 0, size.Width, size.Height), 0, 0, source.Width, source.Height, GraphicsUnit.Pixel, attributes);
             }
 
@@ -262,6 +319,55 @@ namespace obd_car_dangerous.Pages
             g.Restore(state);
         }
 
+        /// <summary>
+        /// The plate at mock-up resolution with the extra width put in: at each stretch column one pixel
+        /// column of the plate is repeated. The top bar and the body below it have their own columns.
+        /// </summary>
+        private Bitmap WidePlate()
+        {
+            Bitmap source = ScanKit.Sprite("plate");
+            if (extra == 0)
+            {
+                return source;
+            }
+
+            if (widePlate is not null && widePlate.Width == source.Width + extra)
+            {
+                return widePlate;
+            }
+
+            widePlate?.Dispose();
+            widePlate = new Bitmap(source.Width + extra, source.Height, System.Drawing.Imaging.PixelFormat.Format32bppPArgb);
+            using Graphics wg = Graphics.FromImage(widePlate);
+            wg.CompositingMode = CompositingMode.SourceCopy;
+            wg.InterpolationMode = InterpolationMode.NearestNeighbor;
+            wg.PixelOffsetMode = PixelOffsetMode.Half;
+
+            void Band(int top, int bottom, (float At, int Grow)[] columns)
+            {
+                int from = 0;
+                int to = 0;
+                foreach ((float at, int grow) in columns)
+                {
+                    int column = (int)(at - ScreenX);
+                    wg.DrawImage(source, new Rectangle(to, top, column - from, bottom - top), new Rectangle(from, top, column - from, bottom - top), GraphicsUnit.Pixel);
+                    to += column - from;
+                    from = column;
+                    if (grow > 0)
+                    {
+                        wg.DrawImage(source, new Rectangle(to, top, grow, bottom - top), new Rectangle(column, top, 1, bottom - top), GraphicsUnit.Pixel);
+                        to += grow;
+                    }
+                }
+
+                wg.DrawImage(source, new Rectangle(to, top, source.Width - from, bottom - top), new Rectangle(from, top, source.Width - from, bottom - top), GraphicsUnit.Pixel);
+            }
+
+            Band(0, BandSplit, new[] { (StretchTop, extra) });
+            Band(BandSplit, source.Height, new[] { (StretchLeft, growLeft), (StretchRight, growRight), (StretchArea, growArea) });
+            return widePlate;
+        }
+
         // ---- top bar -----------------------------------------------------------------------------
 
         private void DrawTopBar(Graphics g)
@@ -269,7 +375,7 @@ namespace obd_car_dangerous.Pages
             HitAt(RectangleF.FromLTRB(312, 46, 356, 90), () => Shell.Back(), "scan-back");
             if (!layerPass)
             {
-                DrawLanguages(g);
+                Shifted(g, extra, () => DrawLanguages(g));
                 return;
             }
 
@@ -306,7 +412,12 @@ namespace obd_car_dangerous.Pages
 
             ScanKit.Text(g, $"VIN: {Vehicle.Vin}", ScanText.HdrVin, x: divider + (ScanText.HdrVin.X - 579f), maxWidth: 880f - divider);
 
-            // Connection pill.
+            Shifted(g, extra, () => DrawTopRight(g));
+        }
+
+        /// <summary>Connection pill, language switch and clock, which keep to the right edge.</summary>
+        private void DrawTopRight(Graphics g)
+        {
             ConnectionService connection = AppState.Connection;
             Color dot = connection.IsLive ? Color.FromArgb(24, 226, 140)
                 : connection.IsDemo ? Color.FromArgb(247, 181, 0)
@@ -486,14 +597,16 @@ namespace obd_car_dangerous.Pages
         {
             ScanModule module = ScanSession.Current;
             ModuleState state = module.State;
-            var track = RectangleF.FromLTRB(1201, 255, 1433, 263);
+            float grow = growArea;
+            var track = RectangleF.FromLTRB(1201, 255, 1433 + grow, 263);
             TextSpec[] labels = { ScanText.Live0, ScanText.Live1, ScanText.Live2, ScanText.Live3, ScanText.Live4 };
-            TextSpec[] values = { ScanText.LiveVal0, ScanText.LiveVal1, ScanText.LiveVal2, ScanText.LiveVal3, ScanText.LiveVal4 };
+            TextSpec[] values = new[] { ScanText.LiveVal0, ScanText.LiveVal1, ScanText.LiveVal2, ScanText.LiveVal3, ScanText.LiveVal4 }
+                .Select(v => Nudge(v, grow, grow)).ToArray();
             (string Label, string Value, string Pid)[] rows = LiveRows(module);
 
             if (!layerPass)
             {
-                DrawAreaMoving(g, module, track, values, rows);
+                DrawAreaMoving(g, module, track, values, rows, grow);
                 return;
             }
 
@@ -523,10 +636,10 @@ namespace obd_car_dangerous.Pages
             ScanKit.Text(g, Loc.T("scan.address"), ScanText.RowAddress, maxWidth: 130);
             ScanKit.Text(g, Loc.T("scan.ecuid"), ScanText.RowEcu, maxWidth: 130);
             ScanKit.Text(g, Loc.T("scan.time"), ScanText.RowTime, maxWidth: 130);
-            ScanKit.Text(g, ShortProtocol(AppState.Connection.Protocol), ScanText.ValProtocol, maxWidth: 136);
-            ScanKit.Text(g, $"0x{module.Address:X2}", ScanText.ValAddress);
+            ScanKit.Text(g, ShortProtocol(AppState.Connection.Protocol), Nudge(ScanText.ValProtocol, grow, grow), maxWidth: 136);
+            ScanKit.Text(g, $"0x{module.Address:X2}", Nudge(ScanText.ValAddress, grow, grow));
             string ecu = live ? (module.Key == "ecm" ? Vehicle.CalibrationId : "-") : AppState.Connection.IsDemo ? module.EcuId : "-";
-            ScanKit.Text(g, ecu, ScanText.ValEcu, maxWidth: 136);
+            ScanKit.Text(g, ecu, Nudge(ScanText.ValEcu, grow, grow), maxWidth: 136);
 
             ScanKit.Text(g, Loc.T("scan.live", module.ShortName), ScanText.LiveTitle, maxWidth: 260);
             for (int i = 0; i < rows.Length && i < labels.Length; i++)
@@ -536,12 +649,12 @@ namespace obd_car_dangerous.Pages
 
             bool linked = AppState.Connection.IsConnected;
             ScanKit.Text(g, Loc.T("scan.comm"), ScanText.Communication, maxWidth: 150);
-            ScanKit.Text(g, Loc.T(linked ? "scan.stable" : "scan.lost"), ScanText.Stable, TextAlign.Right,
+            ScanKit.Text(g, Loc.T(linked ? "scan.stable" : "scan.lost"), Nudge(ScanText.Stable, grow, grow), TextAlign.Right,
                 linked ? ScanText.Stable.Color : Color.FromArgb(240, 70, 80));
         }
 
         /// <summary>The parts of the right panel that move: progress, timer, live values and the trace.</summary>
-        private static void DrawAreaMoving(Graphics g, ScanModule module, RectangleF track, TextSpec[] values, (string Label, string Value, string Pid)[] rows)
+        private static void DrawAreaMoving(Graphics g, ScanModule module, RectangleF track, TextSpec[] values, (string Label, string Value, string Pid)[] rows, float grow)
         {
             ModuleState state = module.State;
             if (module.Progress > 0f)
@@ -559,18 +672,18 @@ namespace obd_car_dangerous.Pages
                 ScanKit.FillCapsule(g, brush, fill);
             }
 
-            ScanKit.Text(g, $"{Math.Round(module.Progress * 100)}%", ScanText.AreaPercent, TextAlign.Right);
-            ScanKit.Text(g, Clock(module.Elapsed), ScanText.ValTime);
+            ScanKit.Text(g, $"{Math.Round(module.Progress * 100)}%", Nudge(ScanText.AreaPercent, grow, grow), TextAlign.Right);
+            ScanKit.Text(g, Clock(module.Elapsed), Nudge(ScanText.ValTime, grow, grow));
             for (int i = 0; i < rows.Length && i < values.Length; i++)
             {
                 ScanKit.Text(g, rows[i].Value, values[i], TextAlign.Right, style: values[1]);
             }
 
-            DrawTrace(g, rows[0].Pid);
+            DrawTrace(g, rows[0].Pid, grow);
         }
 
         /// <summary>The red trace of the chart: the last minute of the module's first live value.</summary>
-        private static void DrawTrace(Graphics g, string pid)
+        private static void DrawTrace(Graphics g, string pid, float grow)
         {
             float[] samples = AppState.Telemetry.HistoryOf(pid).Recent(90);
             if (samples.Length < 2)
@@ -584,7 +697,7 @@ namespace obd_car_dangerous.Pages
             float mid = (max + min) / 2f;
 
             const float left = 1199f;
-            const float right = 1466f;
+            float right = 1466f + grow;
             const float top = 623f;
             const float bottom = 661f;
             var points = new PointF[samples.Length];
@@ -595,7 +708,7 @@ namespace obd_car_dangerous.Pages
             }
 
             GraphicsState state = g.Save();
-            g.SetClip(RectangleF.FromLTRB(1197, 611, 1469, 675));
+            g.SetClip(RectangleF.FromLTRB(1197, 611, 1469 + grow, 675));
             using (var halo = new Pen(Color.FromArgb(46, 255, 30, 50), 5f) { LineJoin = LineJoin.Round })
             {
                 g.DrawCurve(halo, points, 0.4f);
@@ -618,10 +731,20 @@ namespace obd_car_dangerous.Pages
                 ScanKit.Text(g, Loc.T("scan.modulestitle"), ScanText.ModulesTitle, maxWidth: 300);
             }
 
+            // Extra width: a tenth to each card, the rest to the six gaps between them.
+            float widen = extra * 0.1f;
+            float gap = (extra - widen * Slots.Length) / (Slots.Length - 1);
             IReadOnlyList<ScanModule> page = CardPage(cardPage);
             for (int i = 0; i < Slots.Length && i < page.Count; i++)
             {
                 (string slotKey, float x0, float x1, ModuleState drawn, TextSpec title, TextSpec sub, TextSpec status, TextSpec value) = Slots[i];
+                float shift = i * (widen + gap);
+                x0 += shift;
+                x1 += shift + widen;
+                title = Nudge(title, shift, shift + widen);
+                sub = Nudge(sub, shift, shift + widen);
+                status = Nudge(status, shift, shift + widen);
+                value = Nudge(value, shift + widen, shift + widen);
                 ScanModule module = page[i];
                 ModuleState state = module.State;
                 bool asDrawn = module.Key == slotKey && state == drawn;
@@ -678,7 +801,7 @@ namespace obd_car_dangerous.Pages
                 }
             }
 
-            var next = RectangleF.FromLTRB(1474, 872, 1502, 934);
+            var next = RectangleF.FromLTRB(1474 + extra, 872, 1502 + extra, 934);
             if (layerPass && IsHover("scan-cards-next"))
             {
                 Draw.FillRounded(g, Color.FromArgb(20, 255, 255, 255), next, 8f);
@@ -921,6 +1044,7 @@ namespace obd_car_dangerous.Pages
             {
                 ScanSession.Changed -= OnScanChanged;
                 plate?.Dispose();
+                widePlate?.Dispose();
                 layer?.Dispose();
             }
 

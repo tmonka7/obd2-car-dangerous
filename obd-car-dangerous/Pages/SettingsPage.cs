@@ -180,7 +180,7 @@ namespace obd_car_dangerous.Pages
             Draw.TextIn(g, label, Draw.Font(22), Theme.Text,
                 new RectangleF(row.X + 20, row.Y, row.Width * 0.5f, row.Height), StringAlignment.Near, StringAlignment.Center, false);
 
-            var minusBox = new RectangleF(row.Right - 190, row.Y + (row.Height - 42) / 2f, 42, 42);
+            var minusBox = new RectangleF(row.Right - 236, row.Y + (row.Height - 42) / 2f, 42, 42);
             var plusBox = new RectangleF(row.Right - 62, minusBox.Y, 42, 42);
 
             Draw.FillRounded(g, Hovered(Theme.Accent, id + "-minus"), minusBox, 11f);

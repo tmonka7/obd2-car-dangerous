@@ -151,7 +151,12 @@ raster, not redrawn as vectors: `tools/scan_assets.py` cuts it into `Assets/Scan
 - the logo and a faded car used by the rail, the splash and the home screen,
 
 and measures every piece of text into `Pages/Scan/ScanText.g.cs` (position, baseline, Roboto size and
-horizontal squeeze), so live text lands on the mock-up's own baselines. Run the script again after
+horizontal squeeze), so live text lands on the mock-up's own baselines.
+
+The screen is scaled to the window height. A wider screen than the mock-up (16:9, e.g. 1366 x 768) keeps
+the same layout: the extra width goes into flat background columns - the top bar before the connection
+pill, both sides of the car panel, the right panel between labels and values, and the gaps between the
+module cards - so the car and the frames are never stretched. Run the script again after
 changing the mock-up (`pip install numpy pillow opencv-python-headless`).
 
 The scan walks 21 modules (the seven on the first page of cards, fourteen more behind the arrow) and
