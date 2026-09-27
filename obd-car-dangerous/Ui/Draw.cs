@@ -94,12 +94,12 @@ namespace obd_car_dangerous.Ui
         public static void CardShadow(Graphics g, RectangleF bounds, float radius)
         {
             Color shadow = Theme.Shadow;
-            for (int i = 6; i >= 1; i--)
+            for (int i = 8; i >= 1; i--)
             {
-                var layer = RectangleF.Inflate(bounds, i, i);
-                layer.Offset(0, i * 0.6f);
-                using var path = RoundedPath(layer, radius + i);
-                using var brush = new SolidBrush(Color.FromArgb(Math.Max(3, shadow.A / (i * 3)), shadow.R, shadow.G, shadow.B));
+                var layer = RectangleF.Inflate(bounds, i * 1.4f, i * 1.4f);
+                layer.Offset(0, i * 0.8f);
+                using var path = RoundedPath(layer, radius + i * 1.5f);
+                using var brush = new SolidBrush(Color.FromArgb(Math.Max(6, shadow.A / (i + 1)), shadow.R, shadow.G, shadow.B));
                 g.FillPath(brush, path);
             }
         }
@@ -113,13 +113,29 @@ namespace obd_car_dangerous.Ui
                 CardShadow(g, bounds, radius);
             }
 
+<<<<<<< HEAD
             Color body = fill ?? Theme.Card;
             using (var brush = new LinearGradientBrush(RectangleF.Inflate(bounds, 0, 1), Lerp(body, Color.FromArgb(34, 48, 68), 0.25f), body, LinearGradientMode.Vertical))
             {
                 FillRounded(g, brush, bounds, radius);
+=======
+            Color surface = fill ?? Theme.Card;
+            using (var path = RoundedPath(bounds, radius))
+            {
+                RectangleF fillRect = new(bounds.X, bounds.Y, bounds.Width, bounds.Height);
+                using var brush = new LinearGradientBrush(
+                    new RectangleF(fillRect.X, fillRect.Y, fillRect.Width, fillRect.Height),
+                    Theme.Dark ? Color.FromArgb(23, 46, 75) : Color.FromArgb(255, 255, 255),
+                    surface,
+                    LinearGradientMode.Vertical);
+                g.FillPath(brush, path);
+>>>>>>> fa2d1446b918600c417ab017b70bedec48b59b5a
             }
 
             StrokeRounded(g, Theme.Border, bounds, radius, 1f);
+
+            using var topGlow = new Pen(Theme.Dark ? Color.FromArgb(80, 255, 255, 255) : Color.FromArgb(80, 255, 255, 255), 1f);
+            g.DrawLine(topGlow, bounds.X + 10, bounds.Y + 1, bounds.Right - 10, bounds.Y + 1);
         }
 
         /// <summary>Red button fill with the soft glow of the design's selected controls.</summary>

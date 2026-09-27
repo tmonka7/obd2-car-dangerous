@@ -124,6 +124,8 @@ namespace obd_car_dangerous.Pages
                 g.DrawLine(caret, caretX, bounds.Y + 16, caretX, bounds.Bottom - 16);
             }
 
+            Hit(bounds, () => Focus(), "dict-box");
+
             if (!empty)
             {
                 var clear = new RectangleF(bounds.Right - 54, bounds.Y + 15, 30, 30);
@@ -140,8 +142,6 @@ namespace obd_car_dangerous.Pages
                 Draw.TextIn(g, Loc.T("dict.hint"), Draw.Font(17), Theme.TextSoft,
                     new RectangleF(bounds.Right - 460, bounds.Y, 436, bounds.Height), StringAlignment.Far, StringAlignment.Center, false);
             }
-
-            Hit(bounds, () => Focus(), "dict-box");
         }
 
         private void DrawFilters(Graphics g, RectangleF bounds)
@@ -216,7 +216,7 @@ namespace obd_car_dangerous.Pages
                 Draw.TextIn(g, entry.Code, Draw.Font(22, FontStyle.Bold), CategoryColor(entry.Letter),
                     new RectangleF(row.X + 16, row.Y, 110, row.Height), StringAlignment.Near, StringAlignment.Center, false);
 
-                Draw.TextIn(g, entry.Description, Draw.Font(19), Theme.Text,
+                Draw.TextIn(g, entry.LocalizedDescription, Draw.Font(19), Theme.Text,
                     new RectangleF(row.X + 136, row.Y, row.Width - 190, row.Height), StringAlignment.Near, StringAlignment.Center, false);
 
                 if (stored)
@@ -262,7 +262,7 @@ namespace obd_car_dangerous.Pages
             Draw.Text(g, Loc.SystemName(selected.Category), Draw.Font(19), Theme.TextSoft, badge.Right + 22, bounds.Y + 104);
 
             float y = badge.Bottom + 22;
-            Draw.TextIn(g, selected.Description, Draw.Font(23, FontStyle.Bold), Theme.Text,
+            Draw.TextIn(g, selected.LocalizedDescription, Draw.Font(23, FontStyle.Bold), Theme.Text,
                 new RectangleF(bounds.X + 22, y, bounds.Width - 44, 100));
 
             y += 104;

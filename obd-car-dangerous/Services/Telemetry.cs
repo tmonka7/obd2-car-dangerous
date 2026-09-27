@@ -75,6 +75,11 @@ namespace obd_car_dangerous.Services
             IntakeTemp = 32;
             FuelLevel = 58;
             BatteryVoltage = 12.6f;
+            BatterySoc = 68f;
+            HighVoltage = 360f;
+            HighCurrent = 12f;
+            HighVoltageTemp = 34f;
+            MotorRpm = 0f;
             AverageConsumption = 12.4f;
             DistanceKm = 56.8f;
             DrivingSeconds = 5520;
@@ -140,6 +145,16 @@ namespace obd_car_dangerous.Services
 
         public float BatteryVoltage { get; private set; }
 
+        public float BatterySoc { get; private set; } = 68;
+
+        public float HighVoltage { get; private set; } = 360;
+
+        public float HighCurrent { get; private set; } = 12;
+
+        public float HighVoltageTemp { get; private set; } = 34;
+
+        public float MotorRpm { get; private set; } = 0;
+
         public float AmbientTemp { get; private set; } = 27;
 
         public float BarometricPressure { get; private set; } = 101;
@@ -169,6 +184,11 @@ namespace obd_car_dangerous.Services
             new("timing", "Timing Advance", "°", -20, 60, "Sensors", t => t.TimingAdvance),
             new("oil", "Oil Temp", "°C", 0, 150, "Sensors", t => t.OilTemp),
             new("battery", "Battery Voltage", "V", 0, 16, "Sensors", t => t.BatteryVoltage, "0.0"),
+            new("soc", "Battery SOC", "%", 0, 100, "EV/Hybrid", t => t.BatterySoc),
+            new("hv_voltage", "HV Pack Voltage", "V", 0, 600, "EV/Hybrid", t => t.HighVoltage, "0.0"),
+            new("hv_current", "HV Pack Current", "A", -200, 200, "EV/Hybrid", t => t.HighCurrent, "0.0"),
+            new("hv_temp", "HV Pack Temp", "°C", 0, 120, "EV/Hybrid", t => t.HighVoltageTemp),
+            new("motor_rpm", "Motor RPM", "rpm", 0, 12000, "EV/Hybrid", t => t.MotorRpm),
 
             new("fuellevel", "Fuel Level", "%", 0, 100, "Fuel", t => t.FuelLevel),
             new("fuelrate", "Fuel Rate", "L/h", 0, 30, "Fuel", t => t.FuelRate, "0.0"),
@@ -188,7 +208,7 @@ namespace obd_car_dangerous.Services
             new("runtime", "Engine Runtime", "min", 0, 240, "Other", t => (float)t.Runtime.TotalMinutes, "0.0"),
         };
 
-        public static IReadOnlyList<string> Groups { get; } = new[] { "Engine", "Sensors", "Fuel", "Emission", "Other" };
+        public static IReadOnlyList<string> Groups { get; } = new[] { "Engine", "Sensors", "Fuel", "Emission", "EV/Hybrid", "Other" };
 
         public static Pid Find(string key) => Pids.First(p => p.Key == key);
 

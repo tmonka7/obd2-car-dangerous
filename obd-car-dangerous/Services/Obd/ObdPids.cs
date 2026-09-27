@@ -43,6 +43,13 @@ namespace obd_car_dangerous.Services.Obd
             new("baro", 0x33, b => b.Length >= 1 ? b[0] : null, 2),
             new("battery", 0x42, b => b.Length >= 2 ? ((b[0] * 256f) + b[1]) / 1000f : null, 2),
             new("runtime", 0x1F, b => b.Length >= 2 ? ((b[0] * 256f) + b[1]) / 60f : null, 2),
+
+            // EV / hybrid pack telemetry, useful for plug-in and full-hybrid vehicles.
+            new("soc", 0x5B, b => b.Length >= 1 ? b[0] * 100f / 255f : null, 2),
+            new("hv_voltage", 0x7A, b => b.Length >= 2 ? ((b[0] * 256f) + b[1]) / 10f : null, 2),
+            new("hv_current", 0x7B, b => b.Length >= 2 ? (((short)((b[0] << 8) | b[1])) / 10f) : null, 2),
+            new("hv_temp", 0x7C, b => b.Length >= 1 ? b[0] - 40f : null, 2),
+            new("motor_rpm", 0x7D, b => b.Length >= 2 ? ((b[0] * 256f) + b[1]) : null, 2),
         };
 
         /// <summary>Wide range O2 sensor, used when the narrow band PID 0x14 is missing.</summary>

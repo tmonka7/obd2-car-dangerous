@@ -9,7 +9,7 @@ namespace obd_car_dangerous.Services
     internal static class Loc
     {
         /// <summary>Language names, shown as-is in Settings.</summary>
-        public static readonly string[] Languages = { "English", "日本語", "中文" };
+        public static readonly string[] Languages = { "English", "日本語", "中文", "한국어" };
 
         private static int index;
 
@@ -35,6 +35,7 @@ namespace obd_car_dangerous.Services
             {
                 1 => Pick("Yu Gothic UI", "Meiryo UI", "MS UI Gothic", "Segoe UI"),
                 2 => Pick("Microsoft YaHei UI", "Microsoft YaHei", "SimHei", "Segoe UI"),
+                3 => Pick("Malgun Gothic", "맑은 고딕", "Gulim", "Segoe UI"),
                 _ => Pick("Segoe UI", "Tahoma", "Arial"),
             };
 
@@ -43,13 +44,21 @@ namespace obd_car_dangerous.Services
 
         /// <summary>Translated text for a key. Unknown keys fall back to the key itself.</summary>
         public static string T(string key) =>
-            Table.TryGetValue(key, out string[]? values) ? values[index] : key;
+            Table.TryGetValue(key, out string[]? values) ? values[Math.Min(index, values.Length - 1)] : key;
 
         public static string T(string key, params object?[] args) => string.Format(T(key), args);
 
+        /// <summary>Chooses the CSV description for the current language, falling back to English.</summary>
+        public static string DtcText(string english, string korean, string chinese) => index switch
+        {
+            2 when !string.IsNullOrWhiteSpace(chinese) => chinese,
+            3 when !string.IsNullOrWhiteSpace(korean) => korean,
+            _ => english,
+        };
+
         /// <summary>Label of a live parameter, translated when a translation exists.</summary>
         public static string Pid(string pidKey, string fallback) =>
-            Table.TryGetValue("pid." + pidKey, out string[]? values) ? values[index] : fallback;
+            Table.TryGetValue("pid." + pidKey, out string[]? values) ? values[Math.Min(index, values.Length - 1)] : fallback;
 
         /// <summary>Severity word (High / Medium / Low) in the current language.</summary>
         public static string Severity(string severity) => severity switch
@@ -438,6 +447,22 @@ namespace obd_car_dangerous.Services
             ["alarms.cleared"] = new[] { "{0} fault code(s) cleared by user", "ユーザーが {0} 件のコードを消去", "用户清除了 {0} 个故障码" },
 
             // Dictionary
+            ["dtc.P0101"] = new[] { "Mass Air Flow Sensor Circuit Range/Performance", "質量流量センサー回路範囲/性能異常", "空气流量传感器电路范围/性能异常" },
+            ["dtc.P0110"] = new[] { "Intake Air Temperature Sensor Circuit", "吸気温度センサー回路", "进气温度传感器电路" },
+            ["dtc.P0120"] = new[] { "Throttle/Pedal Position Sensor/Switch A Circuit", "スロットル/ペダル位置センサーA回路", "油门/踏板位置传感器A电路" },
+            ["dtc.P0130"] = new[] { "O2 Sensor Circuit Bank 1 Sensor 1", "酸素センサー回路 バンク1 センサー1", "氧传感器电路 1缸银行 1 号传感器" },
+            ["dtc.P0300"] = new[] { "Random/Multiple Cylinder Misfire Detected", "複数シリンダーのランダム失火", "多个气缸随机失火" },
+            ["dtc.P0420"] = new[] { "Catalyst System Efficiency Below Threshold", "触媒効率低下", "催化转换器效率低于阈值" },
+            ["dtc.P0562"] = new[] { "System Voltage Low", "システム電圧低下", "系统电压过低" },
+            ["dtc.P0563"] = new[] { "System Voltage High", "システム電圧高", "系统电压过高" },
+            ["dtc.P0700"] = new[] { "Transmission Control System Malfunction", "変速制御システム不良", "变速箱控制系统故障" },
+            ["dtc.P0A00"] = new[] { "Replace Hybrid Battery Pack", "ハイブリッドバッテリーパック交換", "更换混合动力电池包" },
+            ["dtc.P0A80"] = new[] { "Hybrid Battery Pack State of Charge Range/Performance", "ハイブリッド電池残量範囲/性能異常", "混合动力电池荷电状态范围/性能异常" },
+            ["dtc.P0A81"] = new[] { "Hybrid Battery Pack State of Charge Low", "ハイブリッド電池残量低下", "混合动力电池荷电状态过低" },
+            ["dtc.P0A82"] = new[] { "Hybrid Battery Pack State of Charge High", "ハイブリッド電池残量高", "混合动力电池荷电状态过高" },
+            ["dtc.P2A00"] = new[] { "Hybrid Battery Charge System Performance", "ハイブリッド電池充電システム性能", "混合动力电池充电系统性能" },
+            ["dtc.P2A20"] = new[] { "EV / Hybrid DC/DC Converter Performance", "EV/ハイブリッド DC/DC コンバーター性能", "电动车/混合动力 DC/DC 转换器性能" },
+
             ["dict.title"] = new[] { "OBD2 Dictionary", "OBD2 コード辞典", "OBD2 故障码词典" },
             ["dict.search"] = new[] { "Search code or description", "コードまたは説明で検索", "搜索代码或说明" },
             ["dict.hint"] = new[]
